@@ -89,11 +89,23 @@ mechanism — the engine is fundamentally correct, it just cannot afford to reso
 transition on a routine grid. This justifies a transition model as the affordable
 route to that DNS-confirmed accuracy.
 
+**A simplified transition model was tried — and did not work.** An intermittency
+model gating the LES eddy viscosity by a local vorticity-Reynolds criterion
+(`Re_v = |S| d²/ν`, wall distance `d`) was implemented and tested on the E387 at
+affordable resolution. It *lowered* lift (0.40 → ~0.30), not raised it: a local
+strain criterion cannot distinguish the laminar attached boundary layer from the
+separated shear layer (both strain hard), so it mostly added dissipation. The
+lesson is well known — correct transition needs the boundary layer's *history*
+(momentum thickness, transported intermittency), i.e. a full γ–Reθ model, which
+is a research-grade undertaking in LBM. The experiment was reverted.
+
 **Honest accuracy status:** FluidSim is a validated, fast CFD *engine* that gives
 correct **trends and comparative** results at low-Re airfoil conditions (good for
-design iteration and visualisation) but **not certified absolute** Cl/Cd, due to
-the transition-physics frontier. That is the truthful bound, and no free tool at
-this scale clears it without research-grade transition modelling.
+design iteration and visualisation) but **not certified absolute** Cl/Cd at those
+conditions. Near-DNS resolution recovers the right answer (proven) but is not
+interactive; an affordable transition model resisted a simple solution. That is
+the truthful bound, and no free tool at this scale clears it without research-grade
+transition modelling.
 
 ## What has NOT been validated yet — and it's the part that matters most
 
