@@ -63,11 +63,26 @@ lift from ~0 to +0.20** (was entirely missing) and **halved the drag error**
 (4.4× → 2.1×). Every angle moved toward the data.
 
 **Verdict:** real, measured progress toward the wind tunnel, but **still not
-quantitatively trustworthy** — camber lift is ~half the measured value, drag is
-~2× high, and the lift slope is too shallow (likely LES over-damping and/or the
-laminar separation bubble). Next levers: interpolated/curved bounce-back to
-remove the remaining staircasing, more resolution, and LES-constant tuning —
-then rerun this exact test again.
+quantitatively trustworthy** — camber lift ~half, drag ~2× high.
+
+**Root cause identified — laminar-turbulent transition.** A controlled test
+settled it: at α=4°, lift was *insensitive* to the LES constant (Cs 0.16→0.08)
+and actually *dropped* with more resolution (chord 600→1000: Cl 0.43→0.40). That
+rules out staircasing, LES over-damping, and under-resolution. The real E387 at
+Re=100k stays attached because the laminar separation bubble *transitions to
+turbulent and reattaches*; our solver captures the laminar separation (better
+with resolution → lower lift) but **not the transition that reattaches the flow**,
+so lift stalls at ~half. This is the known hardest problem in low-Re aerodynamics
+(flagged in the project's research from the start). Closing it needs either
+near-DNS resolution (~5000 cells/chord) or a transition model (γ–Reθ-type) — both
+research-grade. Interpolated bounce-back will *not* close it (the gap is not
+staircasing).
+
+**Honest accuracy status:** FluidSim is a validated, fast CFD *engine* that gives
+correct **trends and comparative** results at low-Re airfoil conditions (good for
+design iteration and visualisation) but **not certified absolute** Cl/Cd, due to
+the transition-physics frontier. That is the truthful bound, and no free tool at
+this scale clears it without research-grade transition modelling.
 
 ## What has NOT been validated yet — and it's the part that matters most
 
