@@ -99,6 +99,13 @@ fluid and spins it up, stably, over many revolutions:
 
 ![Spinning rotor wake](assets/rotor_wake.png)
 
+**Propeller mode on a real imported prop** — a 3.5″ three-blade prop STL,
+auto-oriented and spun in the 3D CUDA solver. Left: the swirling slipstream.
+Right: looking down the shaft, the three tip-vortex helices of the spinning
+blades (Q-criterion isosurface; `render_prop.py`):
+
+![Propeller slipstream](assets/prop_wake.png)
+
 **3D flow past a sphere** (Re=100) — the 3D D3Q19 solver, validated against the
 Schiller–Naumann drag correlation (Cd 1.21 vs 1.09 reference; the excess is
 expected staircasing at this resolution). Steady separated wake, mid-plane slice:
@@ -206,6 +213,7 @@ python demo_wing_analytics.py        # 3D finite-wing polar (Cl/Cd/L-D)
 python validate_collision.py         # BGK vs regularised+LES stability ceiling
 python validate_e387.py              # vs REAL UIUC E387 wind-tunnel data
 python validate_prop.py              # spinning prop: stable slipstream + torque
+python render_prop.py                # 3D still: spinning prop + slipstream wake
 python demo_prop_sweep.py --mode hover   # prop performance map (hover lift / cruise)
 python test_orient.py                # prop auto-orientation regression (CPU, no GPU)
 ```

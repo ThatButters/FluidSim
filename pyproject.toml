@@ -30,7 +30,8 @@ py-modules = [
     "fluidsim", "fluidsim_gui", "flow_model", "prop_model",
     "lbm2d", "lbm3d", "lbm2d_cuda", "lbm3d_cuda", "lbm2d_rotating",
     "stl_import", "transition",
-    "live_viewer", "live_viewer_3d", "render_3d",
+    "live_viewer", "live_viewer_3d", "render_3d", "render_prop",
     "demo_stl_flow", "demo_rotor", "demo_airfoil", "demo_wing_analytics",
-    "batch_accuracy", "gpu_benchmark", "validate_prop",
+    "demo_prop_sweep", "batch_accuracy", "gpu_benchmark", "validate_prop",
+    "test_orient",
 ]
