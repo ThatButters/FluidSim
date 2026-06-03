@@ -78,16 +78,20 @@ near-DNS resolution (~5000 cells/chord) or a transition model (γ–Reθ-type) �
 research-grade. Interpolated bounce-back will *not* close it (the gap is not
 staircasing).
 
-**Near-DNS confirms it (and that the engine is correct).** Holding α=4° and
-pushing resolution (`diag_transition.py`), the final lift climbs monotonically
-toward the data — chord 600/1200/1800/2400 → Cl −0.25 / −0.03 / +0.23 / +0.57
-(ref 0.80) — and *every* grid reaches Cl≈0.80–0.87 transiently before the
-separation bubble bursts. So the solver **can** produce the measured lift; coarse
-grids let the bubble burst (lift collapses), finer grids keep it reattached. That
-is textbook laminar-separation-bubble behaviour and confirms transition is the
-mechanism — the engine is fundamentally correct, it just cannot afford to resolve
-transition on a routine grid. This justifies a transition model as the affordable
-route to that DNS-confirmed accuracy.
+**Correction — near-DNS does NOT recover the airfoil lift (an earlier read was
+wrong).** An initial diagnostic using *instantaneous* lift snapshots suggested
+lift climbed toward the data with resolution. **Proper time-averaging overturns
+that.** The high-accuracy batch run (`batch_accuracy.py`, near-DNS + averaging
+over many shedding cycles) gives Cl = 0.38 at both chord 2000 and 3000 —
+**grid-converged** (Δ 0.001) and **52% below the data**, with very large unsteady
+scatter (±0.3–0.6). The flow is spuriously *stalled*: massively unsteady, where
+the real E387 at α=4°, Re=100k is attached at Cl≈0.80. This is the classic
+limitation of **2D** airfoil CFD at transitional Reynolds — 2D cannot represent
+the three-dimensional transition that keeps the boundary layer attached, so it
+collapses into spurious 2D vortex shedding. Neither resolution nor a transition
+model fixes it (the missing physics is 3D), and 3D near-DNS of an airfoil at this
+Re is ~10⁸–10⁹ cells — it does not fit a 16 GB GPU. So **trustworthy absolute
+low-Re airfoil lift is beyond this tool's reach** on this hardware/architecture.
 
 **A transition model was built and tested in depth — and conclusively does not
 work here, for an architectural reason.** Two versions were tried:

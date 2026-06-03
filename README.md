@@ -111,11 +111,18 @@ voxelisation → 3D flow. Mid-span section (left) and planform/tips (right):
 - [x] **Validation vs real wind-tunnel data** (UIUC E387, Re=100k): high
       resolution recovered camber lift (0→+0.20) and halved drag error
       (4.4×→2.1×) — real measured progress, **not yet trustworthy** (see VALIDATION.md)
-- [x] Diagnosed the remaining E387 gap: **laminar-turbulent transition** (lift
-      insensitive to LES constant, *drops* with more resolution) — the hardest
-      low-Re problem, not staircasing. Honest accuracy status in VALIDATION.md.
-- [ ] Transition handling (near-DNS or a γ–Reθ model) for certified absolute
-      low-Re accuracy — research-grade; the engine gives correct trends today
+- [x] Attempted to close the E387 gap — and mapped the real frontier. A
+      transported-intermittency transition model (`transition.py`) was built and
+      proven *ineffective by architecture* (gating LES eddy viscosity can't move
+      the resolved separation). A high-accuracy batch mode (`batch_accuracy.py`,
+      near-DNS + time-averaging) is **grid-converged at Cl 0.38 (−52%)** for the
+      airfoil: 2D spuriously stalls transitional low-Re airfoils, and 3D-DNS
+      (~10⁸–10⁹ cells) won't fit 16 GB. **Honest conclusion: trustworthy absolute
+      low-Re airfoil lift is beyond this tool; it excels at flow visualisation,
+      trends/comparison, and bluff-body / attached-flow accuracy.** (VALIDATION.md)
+- [x] **High-accuracy batch mode** (`batch_accuracy.py`) — near-DNS + time-
+      averaging + grid-convergence check; trustworthy for the validated regimes
+      (bluff bodies, attached flows), with the airfoil-transition limit stated
 
 See **[docs/VALIDATION.md](docs/VALIDATION.md)** for the full accuracy results so
 far, and an honest account of what has *not* yet been validated.
