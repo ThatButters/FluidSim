@@ -39,6 +39,9 @@ voxelised onto the lattice, so any STL can be simulated directly, and forces on
 the body are recovered by momentum exchange at the surface (the basis for lift,
 drag and thrust).
 
+📖 **For the full picture — the goal, the tech stack, and the math we're building
+from scratch — see [docs/OVERVIEW.md](docs/OVERVIEW.md).**
+
 ## Validation
 
 The reference solver is checked against problems with known answers before
@@ -59,8 +62,8 @@ exact analytical velocity profile to **0.29% RMS error** across the annulus:
 
 - [x] 2D Lattice Boltzmann reference solver (CPU, NumPy)
 - [x] Surface force extraction (lift / drag / thrust) — validated
-- [x] Rotating / moving boundaries — validated vs analytical
-- [ ] Schäfer–Turek (DFG) exact benchmark — absolute-accuracy check
+- [x] Rotating / moving boundaries — validated vs analytical (0.29% RMS)
+- [x] Schäfer–Turek (DFG) exact benchmark — Cd/Cl/St all match published values
 - [ ] Sweeping rotating geometry with re-voxelisation (true spinning blade)
 - [ ] GPU port for real-time performance
 - [ ] 3D + STL import + voxelisation
