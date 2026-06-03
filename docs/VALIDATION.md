@@ -89,15 +89,33 @@ mechanism — the engine is fundamentally correct, it just cannot afford to reso
 transition on a routine grid. This justifies a transition model as the affordable
 route to that DNS-confirmed accuracy.
 
-**A simplified transition model was tried — and did not work.** An intermittency
-model gating the LES eddy viscosity by a local vorticity-Reynolds criterion
-(`Re_v = |S| d²/ν`, wall distance `d`) was implemented and tested on the E387 at
-affordable resolution. It *lowered* lift (0.40 → ~0.30), not raised it: a local
-strain criterion cannot distinguish the laminar attached boundary layer from the
-separated shear layer (both strain hard), so it mostly added dissipation. The
-lesson is well known — correct transition needs the boundary layer's *history*
-(momentum thickness, transported intermittency), i.e. a full γ–Reθ model, which
-is a research-grade undertaking in LBM. The experiment was reverted.
+**A transition model was built and tested in depth — and conclusively does not
+work here, for an architectural reason.** Two versions were tried:
+
+1. *Local* intermittency (gate LES eddy viscosity by `Re_v = |S| d²/ν`): *lowered*
+   lift (0.40 → ~0.30). A local strain switch can't separate the attached boundary
+   layer from the separated shear layer, and has no downstream memory.
+2. *Transported* intermittency (`transition.py`) — the proper one-equation model:
+   γ advected + diffused with the flow (validated: a blob advects at exactly the
+   flow speed), produced where `Re_v` exceeds critical, persisting downstream. With
+   the production calibrated, γ saturates to 1 and fires selectively. **Yet the
+   lift is identical — 0.404 — whether 7%, 41%, or 74% of the field is turbulent,
+   and identical to plain LES.**
+
+The lift is **completely insensitive to the eddy-viscosity distribution**, which
+proves the deficit is *not* a subgrid-turbulence problem — so no transition model
+(which only gates eddy viscosity) can fix it. The reason is architectural: γ–Reθ
+works in **RANS**, where eddy viscosity *is* the turbulence; we run **LES**, where
+the large eddies are resolved and the subgrid model is a small correction, so
+gating it doesn't change the resolved separation that sets the lift. (The
+near-DNS test confirms the same thing from the other side: lift recovers with
+*resolution*, not with any viscosity model.) The code is kept as a documented,
+correct-but-ineffective experiment (`collision="transition"`, off by default).
+
+**Conclusion on absolute low-Re accuracy:** within this LES-LBM architecture it
+requires near-DNS **resolution** (proven to work, but expensive / non-interactive).
+A transition model would require a different solver entirely (steady RANS-LBM with
+γ–Reθ) — a separate project, not a tweak.
 
 **Honest accuracy status:** FluidSim is a validated, fast CFD *engine* that gives
 correct **trends and comparative** results at low-Re airfoil conditions (good for

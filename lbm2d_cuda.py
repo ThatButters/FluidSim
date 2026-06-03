@@ -25,7 +25,9 @@ void lbm2d_step(const float* __restrict__ f_in, float* __restrict__ f_out,
                 const unsigned char* __restrict__ solid,
                 const int nx, const int ny,
                 const float omega, const float u_in,
-                const int les, const float csmag)
+                const int les, const float csmag,
+                const float* __restrict__ gamma, const int gamma_on,
+                const float nu_floor)
 {
     const long nc = (long)nx * ny;
     long idx = (long)blockIdx.x * blockDim.x + threadIdx.x;
@@ -84,7 +86,17 @@ void lbm2d_step(const float* __restrict__ f_in, float* __restrict__ f_out,
     float pimag = sqrtf(pxx*pxx + pyy*pyy + 2.f*pxy*pxy);
     float tau0 = 1.f/omega;
     float taut = 0.5f*(tau0 + sqrtf(tau0*tau0 + 25.45584412f*csmag*csmag*pimag/rho));
-    float om = 1.f/taut;
+    float om;
+    if (gamma_on) {
+        // Intermittency from the (externally transported) transition field:
+        // laminar (gamma~0) -> only a small stability floor; turbulent
+        // (gamma~1) -> full Smagorinsky eddy viscosity.
+        float nu_smag = (taut - tau0)*(1.f/3.f);
+        float nu_eff = nu_floor + gamma[idx]*nu_smag;
+        om = 1.f/(tau0 + 3.f*nu_eff);
+    } else {
+        om = 1.f/taut;
+    }
     float tr3 = (pxx + pyy)*(1.f/3.f);
     for (int i = 0; i < 9; ++i) {
         float cpc = cx[i]*cx[i]*pxx + 2.f*cx[i]*cy[i]*pxy + cy[i]*cy[i]*pyy;
@@ -102,17 +114,22 @@ OPP = np.array([8 - i for i in range(9)])
 
 class LBM2D_CUDA:
     def __init__(self, nx, ny, *, u_lb, re, char_length,
-                 collision="bgk", c_smag=0.16):
+                 collision="bgk", c_smag=0.16, nu_floor=0.0015):
         self.nx, self.ny = nx, ny
         self.u_lb = u_lb
         self.nu = u_lb * char_length / re
         self.char_length = char_length
         self.omega = np.float32(1.0 / (3.0 * self.nu + 0.5))
-        self._les = np.int32(1 if collision == "les" else 0)
+        # "transition" uses the LES branch but gates the eddy viscosity by an
+        # externally supplied (transported) intermittency field self.gamma.
+        self._les = np.int32(1 if collision in ("les", "transition") else 0)
+        self._gamma_on = np.int32(1 if collision == "transition" else 0)
         self._csmag = np.float32(c_smag)
+        self._nu_floor = np.float32(nu_floor)
         self.nc = nx * ny
         self._kernel = cp.RawKernel(_KERNEL, "lbm2d_step")
         self.solid = cp.zeros((nx, ny), dtype=cp.uint8)
+        self.gamma = cp.ones((nx, ny), dtype=cp.float32)   # set by the model
 
         u0 = np.zeros((2, nx, ny), dtype=np.float32)
         u0[0] = u_lb
@@ -141,7 +158,8 @@ class LBM2D_CUDA:
         self._kernel((self._blocks,), (self._threads,),
                      (self.f_a, self.f_b, self.solid,
                       np.int32(self.nx), np.int32(self.ny),
-                      self.omega, np.float32(self.u_lb), self._les, self._csmag))
+                      self.omega, np.float32(self.u_lb), self._les, self._csmag,
+                      self.gamma, self._gamma_on, self._nu_floor))
         self.f_a, self.f_b = self.f_b, self.f_a
 
     def macroscopic(self):
