@@ -96,6 +96,8 @@ Requires Python 3 with NumPy and Matplotlib (`pip install -r requirements.txt`).
 python validate_cylinder.py          # Kármán vortex street + drag/Strouhal
 python validate_taylor_couette.py    # rotating-boundary validation
 python validate_dfg.py               # Schäfer-Turek benchmark
+python demo_rotor.py                 # spinning rotor (sweeping geometry)
+python demo_airfoil.py               # NACA 0012 lift/drag polar sweep
 ```
 
 Output (vorticity frames, plots, data) is written to `out/`.

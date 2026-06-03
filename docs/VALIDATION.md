@@ -25,6 +25,7 @@ real-world accuracy:
 | Schäfer–Turek 2D-2 | Schäfer & Turek 1996 | 2 — benchmark | $C_{l,\max}=0.94$ | −6 % vs 0.99–1.01 |
 | Cylinder vortex shedding (Re=100) | Williamson (experiment) | 3 — experiment | $\mathrm{St}=0.177$ | +7 % vs ~0.165 |
 | Spinning rotor (sweeping geometry) | angular-momentum budget | self-consistency | stable, correct spin-up | — |
+| NACA 0012 polar (Re=1000) | thin-airfoil theory + airfoil behaviour | 1/2 — theory | $C_{l,0}=0$, drag bucket, stall ✓; slope 2.3/rad | qualitatively correct; slope low (low-Re + resolution) |
 
 **Reading the numbers.** Against experiment-validated references we are landing
 within **roughly 1–7 %**:
