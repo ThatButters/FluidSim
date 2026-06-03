@@ -19,12 +19,12 @@ helicopters, and multirotor drones** alike.
 If you design your own RC aircraft, your options for seeing how air actually
 flows over it are poor:
 
-- **Cloud CFD** (SimScale, AirShaper) — paid, not real-time, runs on someone
-  else's servers.
-- **Free hobbyist tools** (XFLR5, OpenVSP) — can't ingest an arbitrary 3D-printed
+- **Cloud CFD services** — paid, not real-time, and run on someone else's
+  servers rather than your own GPU.
+- **Free hobbyist aero tools** — generally can't ingest an arbitrary 3D-printed
   STL, and can't resolve the swirling wake behind a spinning prop or rotor.
-- **The one capable free GPU engine** (FluidX3D) — licensed for non-commercial
-  use only, with no friendly UI or hobbyist analytics.
+- **High-end GPU CFD engines** — typically restrictively licensed and aimed at
+  experts, with no friendly UI or hobbyist analytics.
 
 **Nothing free combines all of:** drop-in STL · real-time GPU flow ·
 hobbyist-friendly · planes *and* helis *and* drones · lift/drag/thrust readouts.
