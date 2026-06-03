@@ -4,7 +4,8 @@ FluidSim -- a free, open-source GPU wind tunnel for the RC community.
 One entry point for the whole tool. Import an .stl of your design and either
 *watch* the air flow over it in real time, or *report* the aerodynamic numbers.
 
-    python fluidsim.py view  myplane.stl     # real-time interactive wind tunnel
+    python fluidsim.py gui                     # the desktop app (recommended)
+    python fluidsim.py view  myplane.stl     # quick real-time viewer
     python fluidsim.py report myplane.stl     # run + print drag/forces
     python fluidsim.py demo                    # built-in wing, no file needed
     python fluidsim.py validate                # run the validation suite
@@ -34,6 +35,19 @@ def _need_gpu():
         pass
     sys.exit("No NVIDIA GPU / CuPy found. Install the GPU requirements:\n"
              "  pip install -r requirements-gpu.txt")
+
+
+def cmd_gui(args):
+    _need_gpu()
+    if args.stl and not os.path.exists(args.stl):
+        sys.exit(f"File not found: {args.stl}")
+    from PySide6 import QtWidgets
+    from fluidsim_gui import MainWindow
+    app = QtWidgets.QApplication(sys.argv[:1])
+    app.setStyle("Fusion")
+    win = MainWindow(args.stl)
+    win.show()
+    sys.exit(app.exec())
 
 
 def cmd_view(args):
@@ -118,7 +132,11 @@ def main():
         sp.add_argument("--aoa", type=float, default=8.0, help="angle of attack")
         sp.add_argument("--re", type=float, default=600.0, help="Reynolds number")
 
-    v = sub.add_parser("view", help="real-time interactive 3D wind tunnel")
+    g = sub.add_parser("gui", help="the desktop application (recommended)")
+    g.add_argument("stl", nargs="?", default=None)
+    add_common(g); g.set_defaults(func=cmd_gui)
+
+    v = sub.add_parser("view", help="quick real-time 3D viewer (no window chrome)")
     v.add_argument("stl", nargs="?", default=None)
     add_common(v); v.set_defaults(func=cmd_view)
 

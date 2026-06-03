@@ -14,8 +14,9 @@ keywords = ["CFD", "lattice-boltzmann", "GPU", "aerodynamics", "RC", "drone"]
 dependencies = ["numpy>=1.24", "matplotlib>=3.7"]
 
 [project.optional-dependencies]
-# GPU backend + 3D rendering (NVIDIA). See requirements-gpu.txt for notes.
-gpu = ["cupy-cuda12x[ctk]>=14.0", "pyvista>=0.45", "scikit-image>=0.22"]
+# GPU backend + 3D rendering + desktop GUI (NVIDIA). See requirements-gpu.txt.
+gpu = ["cupy-cuda12x[ctk]>=14.0", "pyvista>=0.45", "scikit-image>=0.22",
+       "PySide6>=6.6", "pyvistaqt>=0.11"]
 
 [project.scripts]
 fluidsim = "fluidsim:main"
@@ -26,7 +27,7 @@ Homepage = "https://github.com/ThatButters/FluidSim"
 [tool.setuptools]
 # Flat layout: the solver, kernels, IO, viewers and CLI are top-level modules.
 py-modules = [
-    "fluidsim",
+    "fluidsim", "fluidsim_gui", "flow_model",
     "lbm2d", "lbm3d", "lbm2d_cuda", "lbm3d_cuda", "lbm2d_rotating",
     "stl_import", "transition",
     "live_viewer", "live_viewer_3d", "render_3d",

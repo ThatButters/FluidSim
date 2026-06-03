@@ -21,14 +21,17 @@ Requires an NVIDIA GPU (Blackwell/RTX 50-series and others).
 ```bash
 pip install -r requirements.txt -r requirements-gpu.txt
 
-python fluidsim.py demo                 # built-in wing in a live 3D wind tunnel
-python fluidsim.py view  myplane.stl    # drop in YOUR model, watch it live
-python fluidsim.py report myplane.stl   # run + print drag / forces
-python fluidsim.py validate             # run the validation suite
+python fluidsim.py gui                   # the desktop app  ← start here
+python fluidsim.py gui    myplane.stl    # open straight into your model
+python fluidsim.py report myplane.stl    # headless: run + print drag / forces
+python fluidsim.py validate              # run the validation suite
 ```
 
-In the live viewer: drag to orbit, scroll to zoom, arrow keys change the angle of
-attack, `space` pauses, `q` quits — with live Cl/Cd/L-D in the corner.
+**The desktop app** is a native window with the live GPU flow embedded: import an
+STL, watch the vortices form as you orbit the camera, and drag the **angle of
+attack** and **wind speed** sliders while the lift / drag / L-D update live. Dark,
+clean, and built for tinkering. (`python fluidsim.py view` is a lighter
+chrome-free viewer if you prefer.)
 
 ---
 
