@@ -23,7 +23,7 @@ import numpy as np
 import cupy as cp
 from matplotlib.path import Path
 
-from lbm2d import LBM2D
+from lbm2d_cuda import LBM2D_CUDA
 
 OUT = os.path.join(os.path.dirname(__file__), "out")
 DATA = os.path.join(os.path.dirname(__file__), "data", "e387.dat")
@@ -57,34 +57,35 @@ def airfoil_mask(coords, nx, ny, chord, cx, cy, aoa_deg):
     return inside.reshape(nx, ny)
 
 
-def run_aoa(coords, aoa, nx, ny, chord, re, u_lb, steps):
-    sim = LBM2D(nx, ny, u_lb=u_lb, re=re, char_length=chord,
-                array_module=cp, collision="les")
+def run_aoa(coords, aoa, nx, ny, chord, re, u_lb, steps, sample=300):
+    sim = LBM2D_CUDA(nx, ny, u_lb=u_lb, re=re, char_length=chord,
+                     collision="les")
     mask = airfoil_mask(coords, nx, ny, chord, 1.5 * chord, ny / 2.0, aoa)
-    sim.solid = cp.asarray(mask)
-    sim.body = sim.solid
-    cl = np.empty(steps)
-    cd = np.empty(steps)
+    sim.set_solid(mask)
+    cl, cd = [], []
+    start = int(0.55 * steps)
     for t in range(steps):
         sim.step()
-        d, l = sim.coefficients()
-        cd[t], cl[t] = d, l
+        if t >= start and t % sample == 0:        # force is off the hot loop
+            d, l = sim.coefficients()
+            cd.append(d); cl.append(l)
     cp.cuda.Stream.null.synchronize()
-    if not np.all(np.isfinite(cl)):
+    if not bool(cp.all(cp.isfinite(sim.f_a))):
         return float("nan"), float("nan")
-    tail = slice(int(0.6 * steps), None)
-    return float(cl[tail].mean()), float(cd[tail].mean())
+    return float(np.mean(cl)), float(np.mean(cd))
 
 
 def main():
     coords = load_airfoil()
-    nx, ny = 520, 340
-    chord = 130.0
-    re, u_lb, steps = 100000.0, 0.05, 22000
+    # High resolution (native CUDA kernel makes this affordable): chord=600 ->
+    # the ~3% camber is ~18 cells, resolvable, where chord=130 had only ~4.
+    nx, ny = 2400, 1400
+    chord = 600.0
+    re, u_lb, steps = 100000.0, 0.05, 110000
     alphas = np.array([-2, 0, 2, 4, 6, 8], dtype=float)
 
     print(f"E387 vs UIUC data  {nx}x{ny}  chord={chord:.0f}  Re={re:.0f}  "
-          f"LES", flush=True)
+          f"LES (CUDA kernel)", flush=True)
     cls, cds = [], []
     for a in alphas:
         cl, cd = run_aoa(coords, a, nx, ny, chord, re, u_lb, steps)

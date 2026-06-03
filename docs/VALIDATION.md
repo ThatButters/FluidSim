@@ -50,21 +50,24 @@ We ran the actual Eppler E387 geometry (UIUC coordinates) at a real RC Reynolds
 number with the LES operator and compared to the UIUC wind-tunnel reference
 (`validate_e387.py`). The honest scorecard:
 
-| quantity | FluidSim | UIUC ref | error |
+| quantity | low-res (chord 130) | **high-res (chord 600)** | UIUC ref |
 | --- | --- | --- | --- |
-| lift-curve slope | 0.075 /deg | 0.100 /deg | −25 % |
-| Cl at 0° | −0.01 | +0.40 | camber lift **missed** |
-| Cd_min | 0.053 | 0.012 | **+341 %** |
+| Cl at 0° (camber lift) | −0.01 *(missed)* | **+0.20** | +0.40 |
+| Cd_min | 0.053 *(+341 %)* | **0.026 *(+115 %)*** | 0.012 |
+| lift-curve slope (/deg) | 0.075 | 0.059 | 0.100 |
 
-**Verdict:** the fundamental aerodynamics work (lift rises with angle, slope in
-the right ballpark) but the result is **not yet quantitatively trustworthy** at
-RC conditions — the camber lift is washed out and drag is ~4× too high. The cause
-is **resolution, not a physics bug**: at Re=100k with ~130 cells of chord and a
-staircased surface, neither the ~4-cell camber nor the boundary layer is
-resolvable. LES delivered *stability* at this Reynolds number; *accuracy* needs
-~5–10× finer grids. The clear path: a native-CUDA 2D kernel (≈50× faster, proven
-in 3D) to afford the resolution, plus interpolated bounce-back to remove
-staircasing — then rerun this exact test against the same data.
+**The resolution diagnosis was correct — and measured.** The native-CUDA 2D
+kernel (`lbm2d_cuda.py`, ~31,000 MLUPS, ~400× the CuPy backend) made chord=600 a
+2-minute run instead of ~45. Quadrupling the resolution **recovered the camber
+lift from ~0 to +0.20** (was entirely missing) and **halved the drag error**
+(4.4× → 2.1×). Every angle moved toward the data.
+
+**Verdict:** real, measured progress toward the wind tunnel, but **still not
+quantitatively trustworthy** — camber lift is ~half the measured value, drag is
+~2× high, and the lift slope is too shallow (likely LES over-damping and/or the
+laminar separation bubble). Next levers: interpolated/curved bounce-back to
+remove the remaining staircasing, more resolution, and LES-constant tuning —
+then rerun this exact test again.
 
 ## What has NOT been validated yet — and it's the part that matters most
 

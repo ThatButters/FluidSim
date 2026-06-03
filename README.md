@@ -106,11 +106,12 @@ voxelisation → 3D flow. Mid-span section (left) and planform/tips (right):
 - [ ] Rotor/prop analytics (thrust, torque, figure of merit) in the CUDA path
 - [ ] Polish the renderer (volume smoke, surface pressure, live AoA/wind controls)
 - [ ] Per-domain dashboard (planes / helis / drones)
-- [x] **First validation vs real wind-tunnel data** (UIUC E387, Re=100k): lift
-      slope within ~25%, but camber lift lost and drag ~4× high — resolution-
-      limited, **not yet trustworthy at RC conditions** (honest; see VALIDATION.md)
-- [ ] Native-CUDA 2D kernel + interpolated bounce-back → the resolution to
-      close the E387 gap, then re-validate against the same data
+- [x] **Native-CUDA 2D kernel** (`lbm2d_cuda.py`) — ~31,000 MLUPS, ~400× CuPy;
+      BGK + LES; the resolution unlock for accurate high-Re airfoils
+- [x] **Validation vs real wind-tunnel data** (UIUC E387, Re=100k): high
+      resolution recovered camber lift (0→+0.20) and halved drag error
+      (4.4×→2.1×) — real measured progress, **not yet trustworthy** (see VALIDATION.md)
+- [ ] Interpolated bounce-back + LES tuning → close the remaining E387 gap
 
 See **[docs/VALIDATION.md](docs/VALIDATION.md)** for the full accuracy results so
 far, and an honest account of what has *not* yet been validated.
