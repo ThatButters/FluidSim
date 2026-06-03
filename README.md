@@ -102,7 +102,16 @@ python validate_dfg.py               # Schäfer-Turek benchmark
 python demo_rotor.py                 # spinning rotor (sweeping geometry)
 python demo_airfoil.py               # NACA 0012 lift/drag polar sweep
 python gpu_benchmark.py              # GPU vs CPU: correctness + speed-up
+python live_viewer.py                # REAL-TIME interactive wind tunnel (GPU)
 ```
+
+### Live interactive viewer
+
+`live_viewer.py` opens a real-time window: a NACA 0012 airfoil in a live wind
+tunnel running on the GPU. **Tilt the wing with the arrow keys and watch the flow
+separate and stall**, with lift/drag updating live. Controls: ↑/↓ angle of attack,
+←/→ wind speed, `f` cycle field (vorticity/speed/pressure), `space` pause, `r`
+reset, `q` quit.
 
 For the GPU backend (NVIDIA): `pip install -r requirements-gpu.txt`, then pass
 `array_module=cupy` when constructing the solver. The GPU runs the identical
