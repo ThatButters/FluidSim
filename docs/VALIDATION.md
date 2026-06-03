@@ -26,6 +26,8 @@ real-world accuracy:
 | Cylinder vortex shedding (Re=100) | Williamson (experiment) | 3 — experiment | $\mathrm{St}=0.177$ | +7 % vs ~0.165 |
 | Spinning rotor (sweeping geometry) | angular-momentum budget | self-consistency | stable, correct spin-up | — |
 | NACA 0012 polar (Re=1000) | thin-airfoil theory + airfoil behaviour | 1/2 — theory | $C_{l,0}=0$, drag bucket, stall ✓; slope 2.3/rad | qualitatively correct; slope low (low-Re + resolution) |
+| Sphere drag, 3D (Re=100) | Schiller–Naumann correlation | 2 — correlation | $C_d=1.21$ vs 1.09 | +11 % (D=24 staircasing; 3% blockage); steady wake correct |
+| STL voxelisation | analytic sphere mask | round-trip | IoU 0.93 | mesh→voxels correct (faceting/rounding gap) |
 
 **Reading the numbers.** Against experiment-validated references we are landing
 within **roughly 1–7 %**:

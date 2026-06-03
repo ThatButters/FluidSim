@@ -64,26 +64,35 @@ fluid and spins it up, stably, over many revolutions:
 
 ![Spinning rotor wake](assets/rotor_wake.png)
 
+**3D flow past a sphere** (Re=100) — the 3D D3Q19 solver, validated against the
+Schiller–Naumann drag correlation (Cd 1.21 vs 1.09 reference; the excess is
+expected staircasing at this resolution). Steady separated wake, mid-plane slice:
+
+![Sphere flow](assets/sphere_slice.png)
+
+**End-to-end: a wing from an STL file, in 3D flow** — imported mesh → GPU
+voxelisation → 3D flow. Mid-span section (left) and planform/tips (right):
+
+![STL wing flow](assets/stl_wing_flow.png)
+
 ## Roadmap
 
-**Physics foundation (2D reference solver) — complete and validated:**
+**Physics & geometry foundation — complete and validated:**
 
-- [x] 2D Lattice Boltzmann reference solver (CPU, NumPy)
-- [x] Surface force extraction (lift / drag / thrust) — validated
+- [x] 2D Lattice Boltzmann solver (D2Q9) — CPU & GPU (NumPy/CuPy, identical code)
+- [x] Surface force extraction (lift / drag / thrust) — DFG benchmark exact
 - [x] Rotating / moving boundaries — validated vs analytical (0.29% RMS)
-- [x] Schäfer–Turek (DFG) exact benchmark — Cd/Cl/St all match published values
-- [x] Sweeping rotating geometry with re-voxelisation (true spinning blade) —
-      stable over multiple revolutions, validated via the angular-momentum budget
+- [x] Sweeping rotating geometry (true spinning blade) — angular-momentum budget
+- [x] GPU solver — validated to machine precision vs CPU; 10–23× and scaling
+- [x] 2D airfoil polar harness (NACA 0012)
+- [x] **3D solver (D3Q19)** — validated vs sphere drag (Cd 1.21 vs 1.09)
+- [x] **STL import + voxelisation** — IoU 0.93 vs analytic; end-to-end STL→3D flow
 
 **The road to a usable tool:**
 
-- [x] GPU solver — backend-agnostic (NumPy/CuPy); validated to machine precision
-      against the CPU reference; 10–23× faster and scaling with domain size
-- [ ] Native-CUDA optimisation (fused collide-stream kernels, packed FP32/16
-      layout) for the full ~100×+ and real-time performance
-- [ ] 3D + STL import + voxelisation
-- [ ] Real-time interactive flow visualisation
-- [ ] Per-domain analytics (planes / helis / drones)
+- [ ] Native-CUDA optimisation (fused kernels, packed FP16/32) for real-time 3D
+- [ ] 3D GPU rendering (volume smoke, vortex isosurfaces, surface pressure, camera)
+- [ ] Interactive 3D controls + per-domain analytics (planes / helis / drones)
 - [ ] **Validate against real RC datasets** at the operating Reynolds number
       (UIUC propeller database, UIUC low-Re airfoil polars) — the accuracy bar
       that matters before anyone trusts a number for a real build
@@ -103,6 +112,8 @@ python demo_rotor.py                 # spinning rotor (sweeping geometry)
 python demo_airfoil.py               # NACA 0012 lift/drag polar sweep
 python gpu_benchmark.py              # GPU vs CPU: correctness + speed-up
 python live_viewer.py                # REAL-TIME interactive wind tunnel (GPU)
+python validate_sphere.py            # 3D solver: flow past a sphere (Re=100)
+python demo_stl_flow.py              # 3D: import an STL wing, flow past it
 ```
 
 ### Live interactive viewer
