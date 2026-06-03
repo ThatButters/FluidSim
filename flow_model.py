@@ -16,7 +16,27 @@ import pyvista as pv
 from lbm3d_cuda import LBM3D_CUDA
 from stl_import import (naca_wing, write_binary_stl, load_binary_stl,
                         fit_to_grid, voxelize)
-from demo_stl_flow import rotate_aoa
+
+
+def rotate_model(tris, pitch_deg, yaw_deg):
+    """Orient a mesh in the (+x) wind: pitch about the span (z) axis -- angle of
+    attack -- and yaw about the vertical (y) axis -- turn left/right."""
+    p, y = np.radians(-pitch_deg), np.radians(yaw_deg)
+    out = tris.astype(np.float32).copy()
+    c = out.reshape(-1, 3).mean(0)
+    rel = out - c
+    x, yy, z = rel[..., 0].copy(), rel[..., 1].copy(), rel[..., 2].copy()
+    # pitch (x-y plane)
+    xp = x * np.cos(p) - yy * np.sin(p)
+    yp = x * np.sin(p) + yy * np.cos(p)
+    x, yy = xp, yp
+    # yaw (x-z plane)
+    xq = x * np.cos(y) + z * np.sin(y)
+    zq = -x * np.sin(y) + z * np.cos(y)
+    out[..., 0] = xq + c[0]
+    out[..., 1] = yy + c[1]
+    out[..., 2] = zq + c[2]
+    return out
 
 
 def q_criterion_gpu(u):
@@ -36,7 +56,8 @@ class FlowModel:
         self.nx, self.ny, self.nz = nx, ny, nz
         self.re, self.u_lb = re, u_lb
         self.char_length = nx * 0.3
-        self.aoa = 6.0
+        self.pitch = 6.0
+        self.yaw = 0.0
         self.steps = 0
         self._tris = None
         self.sim = None
@@ -44,7 +65,7 @@ class FlowModel:
         self.level = 1e-6
 
     # -- model loading ------------------------------------------------------
-    def load(self, stl_path=None, aoa=6.0):
+    def load(self, stl_path=None, pitch=6.0, yaw=0.0):
         if stl_path is None:
             out = os.path.join(os.path.dirname(__file__), "out")
             os.makedirs(out, exist_ok=True)
@@ -52,12 +73,12 @@ class FlowModel:
             if not os.path.exists(stl_path):
                 write_binary_stl(stl_path, naca_wing(1.0, 1.6, 0.12))
         self._tris = load_binary_stl(stl_path)
-        self.aoa = aoa
+        self.pitch, self.yaw = pitch, yaw
         self._rebuild(warmup=1400)
         return int(self.mask.sum())
 
     def _voxelise(self):
-        tris = rotate_aoa(self._tris, self.aoa)
+        tris = rotate_model(self._tris, self.pitch, self.yaw)
         self.mask = voxelize(fit_to_grid(tris, self.nx, self.ny, self.nz, 0.22),
                              self.nx, self.ny, self.nz)
         self.area = float(self.mask.any(axis=1).sum()) or 1.0
@@ -75,14 +96,22 @@ class FlowModel:
         self.level = self._auto_level()
 
     # -- live controls ------------------------------------------------------
-    def set_aoa(self, aoa):
-        self.aoa = float(aoa)
+    def set_pitch(self, pitch):
+        self.pitch = float(pitch)
+        self._rebuild(warmup=600)
+
+    def set_yaw(self, yaw):
+        self.yaw = float(yaw)
         self._rebuild(warmup=600)
 
     def set_reynolds(self, re):
         self.re = float(re)
         nu = self.u_lb * self.char_length / self.re
         self.sim.omega = np.float32(1.0 / (3.0 * nu + 0.5))
+
+    def relevel(self):
+        """Re-pick the vortex isosurface level (after a wind-speed change)."""
+        self.level = self._auto_level()
 
     def reset(self):
         self._rebuild(warmup=600)

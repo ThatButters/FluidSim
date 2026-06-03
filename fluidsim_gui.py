@@ -14,6 +14,7 @@ from __future__ import annotations
 import sys
 import os
 
+import pyvista as pv
 from PySide6 import QtCore, QtGui, QtWidgets
 from pyvistaqt import QtInteractor
 
@@ -108,25 +109,36 @@ class MainWindow(QtWidgets.QMainWindow):
         load.clicked.connect(self._open_dialog)
         v.addWidget(load)
 
-        v.addWidget(QtWidgets.QLabel("CONDITIONS", objectName="section"))
-        self.aoa_lbl = QtWidgets.QLabel(objectName="sliderVal")
-        self.aoa = self._slider(-15, 18, int(self.model.aoa), v, "Angle of attack",
-                                self.aoa_lbl, "°")
-        self.aoa.sliderReleased.connect(self._on_aoa)
-        self.aoa.valueChanged.connect(
-            lambda x: self.aoa_lbl.setText(f"{x}°"))
+        v.addWidget(QtWidgets.QLabel("ORIENT THE MODEL IN THE WIND",
+                                     objectName="section"))
+        self.pitch_lbl = QtWidgets.QLabel(objectName="sliderVal")
+        self.pitch = self._slider(-15, 18, int(self.model.pitch), v,
+                                  "Pitch  (angle of attack)", self.pitch_lbl, "°")
+        self.pitch.valueChanged.connect(
+            lambda x: self.pitch_lbl.setText(f"{x:+d}°"))
+        self.pitch.sliderReleased.connect(self._on_pitch)
 
-        self.re_lbl = QtWidgets.QLabel(objectName="sliderVal")
-        self.re = self._slider(200, 1000, int(self.model.re), v, "Wind (Reynolds)",
-                               self.re_lbl, "")
-        self.re.valueChanged.connect(self._on_re)
+        self.yaw_lbl = QtWidgets.QLabel(objectName="sliderVal")
+        self.yaw = self._slider(-45, 45, int(self.model.yaw), v,
+                                "Yaw  (turn left / right)", self.yaw_lbl, "°")
+        self.yaw.valueChanged.connect(
+            lambda x: self.yaw_lbl.setText(f"{x:+d}°"))
+        self.yaw.sliderReleased.connect(self._on_yaw)
+
+        v.addWidget(QtWidgets.QLabel("WIND", objectName="section"))
+        self.wind_lbl = QtWidgets.QLabel(objectName="sliderVal")
+        self.wind = self._slider(1, 10, 5, v, "Wind speed", self.wind_lbl, "")
+        self.wind_lbl.setText("5 / 10")
+        self.wind.valueChanged.connect(self._on_wind)
 
         row = QtWidgets.QHBoxLayout()
         self.play_btn = QtWidgets.QPushButton("⏸  Pause")
         self.play_btn.clicked.connect(self._toggle)
-        reset = QtWidgets.QPushButton("↺  Reset")
+        reset = QtWidgets.QPushButton("↺  Reset flow")
         reset.clicked.connect(self._reset)
-        row.addWidget(self.play_btn); row.addWidget(reset)
+        recam = QtWidgets.QPushButton("⤢  Reset view")
+        recam.clicked.connect(self._reset_view)
+        row.addWidget(self.play_btn); row.addWidget(reset); row.addWidget(recam)
         v.addLayout(row)
 
         v.addWidget(QtWidgets.QLabel("LIVE READOUT", objectName="section"))
@@ -177,6 +189,14 @@ class MainWindow(QtWidgets.QMainWindow):
     # -- scene --------------------------------------------------------------
     def _draw_static(self):
         self.plotter.clear()
+        nx, ny, nz = self.model.nx, self.model.ny, self.model.nz
+        # wind-direction arrow (flow is +x), upstream of the model
+        arrow = pv.Arrow(start=(-0.18 * nx, 0.5 * ny, 0.12 * nz),
+                         direction=(1, 0, 0), scale=0.42 * nx,
+                         tip_length=0.22, tip_radius=0.05, shaft_radius=0.018)
+        self.plotter.add_mesh(arrow, color="#ffb454", name="wind")
+        self.plotter.add_text("WIND  →", position="lower_left",
+                              font_size=12, color="#ffb454")
         self.plotter.add_mesh(self.model.body, color="#c9d4e3",
                               smooth_shading=True)
         self._draw_vortex()
@@ -193,7 +213,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _open(self, stl, initial=False):
         self.status.showMessage("Loading & warming up the flow …")
         QtWidgets.QApplication.processEvents()
-        cells = self.model.load(stl, aoa=self.model.aoa)
+        cells = self.model.load(stl, pitch=self.model.pitch, yaw=self.model.yaw)
         self._draw_static()
         self.status.showMessage(
             f"{os.path.basename(stl) if stl else 'demo wing'} — "
@@ -205,17 +225,33 @@ class MainWindow(QtWidgets.QMainWindow):
         if path:
             self._open(path)
 
-    def _on_aoa(self):
-        self.status.showMessage("Re-meshing at new angle …")
+    def _on_pitch(self):
+        self.status.showMessage("Re-meshing at new pitch …")
         QtWidgets.QApplication.processEvents()
-        self.model.set_aoa(self.aoa.value())
+        self.model.set_pitch(self.pitch.value())
         self._draw_static()
         self.status.showMessage("GPU live")
 
-    def _on_re(self, val):
-        self.re_lbl.setText(str(val))
+    def _on_yaw(self):
+        self.status.showMessage("Re-meshing at new yaw …")
+        QtWidgets.QApplication.processEvents()
+        self.model.set_yaw(self.yaw.value())
+        self._draw_static()
+        self.status.showMessage("GPU live")
+
+    def _on_wind(self, level):
+        self.wind_lbl.setText(f"{level} / 10")
         if self.model.sim is not None:
-            self.model.set_reynolds(val)
+            re = 200 + (level - 1) * (800 / 9)        # speed 1..10 -> Re 200..1000
+            self.model.set_reynolds(re)
+            self.model.relevel()                       # so the wake change shows
+
+    def _reset_view(self):
+        self.plotter.camera_position = "yz"
+        self.plotter.camera.azimuth = 35
+        self.plotter.camera.elevation = 18
+        self.plotter.reset_camera()
+        self.plotter.render()
 
     def _toggle(self):
         self.playing = not self.playing

@@ -28,9 +28,10 @@ python fluidsim.py validate              # run the validation suite
 ```
 
 **The desktop app** is a native window with the live GPU flow embedded: import an
-STL, watch the vortices form as you orbit the camera, and drag the **angle of
-attack** and **wind speed** sliders while the lift / drag / L-D update live. Dark,
-clean, and built for tinkering. (`python fluidsim.py view` is a lighter
+STL, watch the vortices form as you orbit the camera, and **turn the model in the
+wind** with the pitch and yaw sliders (a wind-direction arrow shows the flow)
+while the **wind-speed** slider and the live lift / drag / L-D update the flow.
+Dark, clean, and built for tinkering. (`python fluidsim.py view` is a lighter
 chrome-free viewer if you prefer.)
 
 ---
