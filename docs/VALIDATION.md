@@ -53,12 +53,23 @@ with **turbulence and laminar-to-turbulent transition** — a fundamentally hard
 regime that determines real drag, stall, and thrust. **We have no accuracy number
 there yet, and we will not claim one until we measure it.**
 
-**The BGK stability ceiling, measured.** On the 3D wing we found plain BGK stays
-stable to about **Re≈800** at this resolution (relaxation time $\tau\approx0.51$)
-and **diverges by Re≈1200** ($\tau\to0.5$). So the finite-wing polar runs at
-Re=600: the *physics* (finite-wing lift slope, induced drag) is correct, but the
-*magnitude* is at low Re. Reaching RC Reynolds numbers (10⁴–10⁵) at affordable
-resolution is precisely what a cumulant / regularised collision operator is for.
+**The BGK stability ceiling — measured, then broken.** Plain BGK stays stable
+only to about **Re≈2000** (2D) / **Re≈1000** (3D) at affordable resolution
+($\tau\to0.5$), well below the RC regime. We added a **regularised collision +
+Smagorinsky LES** operator (rebuild the non-equilibrium from its momentum-flux
+tensor; add eddy viscosity where strain is high). It **matches BGK at low Re** and
+stays stable far past it:
+
+| Case | BGK ceiling | regularised + LES |
+| --- | --- | --- |
+| 2D cylinder | ~Re 2000 | stable to **Re 40,000** (Cd 1.3–1.45) |
+| 3D sphere | ~Re 1000 | stable to **Re 20,000** (Cd 1.25→0.66, correct trend) |
+
+So stable simulation **into the RC operating regime (Re ~10⁴) is now reachable**
+(`validate_collision.py`). This is the prerequisite for validating against real
+RC wind-tunnel data; absolute accuracy there still needs verification, but the
+solver can now *reach* those conditions. (The earlier finite-wing polar was run at
+Re=600 on BGK; it can now be rerun at RC Reynolds with the LES operator.)
 
 This is the known hard frontier (see the research that informed the project):
 trustworthy accuracy at the RC operating regime requires

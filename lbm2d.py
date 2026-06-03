@@ -67,12 +67,14 @@ class LBM2D:
     """
 
     def __init__(self, nx: int, ny: int, *, u_lb: float, re: float,
-                 char_length: float, array_module=np) -> None:
+                 char_length: float, array_module=np,
+                 collision: str = "bgk") -> None:
         self.nx, self.ny = nx, ny
         self.u_lb = u_lb
         self.re = re
         self.char_length = char_length
         self.xp = array_module               # numpy (CPU) or cupy (GPU)
+        self.collision = collision           # "bgk" or "regularized"
         xp = self.xp
 
         # Viscosity from Re (Re = U * L / nu), then BGK relaxation rate.
@@ -155,8 +157,13 @@ class LBM2D:
                                   + self.f[COL_MINUS_REV, 0, :]
                                   - feq[COL_MINUS_REV, 0, :])
 
-        # 5. BGK collision.
-        fout = self.f - self.omega * (self.f - feq)
+        # 5. Collision: BGK, regularised, or regularised + Smagorinsky LES.
+        if self.collision == "les":
+            fout = self._collide_regularized(feq, omega=self._les_omega(feq))
+        elif self.collision == "regularized":
+            fout = self._collide_regularized(feq)
+        else:
+            fout = self.f - self.omega * (self.f - feq)
 
         # 6. No-slip bounce-back on the obstacle (and measure the force on it
         #    BEFORE overwriting, via the momentum-exchange method).
@@ -177,6 +184,62 @@ class LBM2D:
         """
         for i in range(9):
             fout[i, self.solid] = self.f[OPP[i], self.solid]
+
+    def _momentum_flux(self, feq):
+        """Non-equilibrium momentum-flux tensor components (Pxx, Pxy, Pyy)."""
+        xp = self.xp
+        fneq = self.f - feq
+        pxx = xp.zeros((self.nx, self.ny))
+        pxy = xp.zeros((self.nx, self.ny))
+        pyy = xp.zeros((self.nx, self.ny))
+        for i in range(9):
+            if i == 4:
+                continue
+            pxx += (C[i, 0] * C[i, 0]) * fneq[i]
+            pxy += (C[i, 0] * C[i, 1]) * fneq[i]
+            pyy += (C[i, 1] * C[i, 1]) * fneq[i]
+        return pxx, pxy, pyy
+
+    def _collide_regularized(self, feq, omega=None):
+        """Regularised collision: rebuild the non-equilibrium populations from
+        their momentum-flux tensor before relaxing, filtering the higher-order
+        "ghost" modes that destabilise BGK as the viscosity -> 0 (high Re).
+
+        f_neq_reg_i = (9/2) w_i [ (c_i . Pi . c_i) - (1/3) tr(Pi) ],   Pi the
+        non-equilibrium momentum-flux tensor; then f_i = f_eq_i + (1-omega) f_neq_reg_i.
+        ``omega`` may be a per-cell field (Smagorinsky LES).
+        """
+        if omega is None:
+            omega = self.omega
+        pxx, pxy, pyy = self._momentum_flux(feq)
+        tr3 = (pxx + pyy) / 3.0
+        one_minus = 1.0 - omega
+        fout = self.xp.empty_like(self.f)
+        for i in range(9):
+            cpc = (C[i, 0] * C[i, 0] * pxx
+                   + 2.0 * C[i, 0] * C[i, 1] * pxy
+                   + C[i, 1] * C[i, 1] * pyy)
+            fneq_reg = 4.5 * W[i] * (cpc - tr3)
+            fout[i] = feq[i] + one_minus * fneq_reg
+        return fout
+
+    def _les_omega(self, feq, c_smag: float = 0.16):
+        """Per-cell relaxation rate with a Smagorinsky eddy viscosity.
+
+        The local strain follows from the non-equilibrium stress |Pi|, so the
+        total relaxation time solves
+            tau_t = 0.5 (tau0 + sqrt(tau0^2 + 18*sqrt2 * Cs^2 * |Pi| / rho)),
+        adding dissipation where the flow is straining hardest -- which both
+        models unresolved turbulence (LES) and stabilises high-Re flow.
+        """
+        xp = self.xp
+        pxx, pxy, pyy = self._momentum_flux(feq)
+        pi_mag = xp.sqrt(pxx ** 2 + pyy ** 2 + 2.0 * pxy ** 2)
+        rho = self.f.sum(axis=0)
+        tau0 = 1.0 / self.omega
+        tau_t = 0.5 * (tau0 + xp.sqrt(
+            tau0 ** 2 + 18.0 * np.sqrt(2.0) * c_smag ** 2 * pi_mag / rho))
+        return 1.0 / tau_t
 
     # -- force extraction (the heart of every downstream metric) -------------
     def _momentum_exchange_force(self, fout: np.ndarray) -> np.ndarray:

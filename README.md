@@ -101,7 +101,8 @@ voxelisation → 3D flow. Mid-span section (left) and planform/tips (right):
       isosurfaces (the wingtip vortices), VTK-rendered
 - [x] Force/torque in the CUDA path (validated 0.25% vs reference) + live Cl/Cd/L-D
       in the 3D viewer HUD; 3D finite-wing polar (lift slope matches theory)
-- [ ] Cumulant/regularised collision for stable RC Reynolds numbers (10⁴–10⁵)
+- [x] Regularised collision + Smagorinsky LES — stable into the RC regime
+      (2D to Re 40k, 3D to Re 20k; BGK dies ~Re 1–2k). Matches BGK at low Re.
 - [ ] Rotor/prop analytics (thrust, torque, figure of merit) in the CUDA path
 - [ ] Polish the renderer (volume smoke, surface pressure, live AoA/wind controls)
 - [ ] Per-domain dashboard (planes / helis / drones)
@@ -130,6 +131,7 @@ python validate_cuda.py              # fused CUDA kernel: correctness + ~3000 ML
 python render_3d.py                  # 3D vortex-core isosurface render (still)
 python live_viewer_3d.py             # REAL-TIME interactive 3D wind tunnel
 python demo_wing_analytics.py        # 3D finite-wing polar (Cl/Cd/L-D)
+python validate_collision.py         # BGK vs regularised+LES stability ceiling
 ```
 
 ### Live interactive viewer

@@ -27,7 +27,8 @@ extern "C" __global__
 void lbm_step(const float* __restrict__ f_in, float* __restrict__ f_out,
               const unsigned char* __restrict__ solid,
               const int nx, const int ny, const int nz,
-              const float omega, const float u_in)
+              const float omega, const float u_in,
+              const int les, const float csmag)
 {
     const long nc = (long)nx * ny * nz;
     long idx = (long)blockIdx.x * blockDim.x + threadIdx.x;
@@ -84,11 +85,41 @@ void lbm_step(const float* __restrict__ f_in, float* __restrict__ f_out,
     ux *= inv; uy *= inv; uz *= inv;
     float usq = 1.5f * (ux*ux + uy*uy + uz*uz);
 
-    // BGK collision -> write.
+    if (!les) {
+        // BGK collision -> write.
+        for (int i = 0; i < 19; ++i) {
+            float cu = 3.f * (cx[i]*ux + cy[i]*uy + cz[i]*uz);
+            float feq = w[i] * rho * (1.f + cu + 0.5f*cu*cu - usq);
+            f_out[i*nc + idx] = fi[i] - omega * (fi[i] - feq);
+        }
+        return;
+    }
+
+    // Regularised collision + Smagorinsky LES (stable to high Reynolds).
+    // Equilibrium and the non-equilibrium momentum-flux tensor Pi.
+    float feq[19];
+    float pxx=0,pyy=0,pzz=0,pxy=0,pxz=0,pyz=0;
     for (int i = 0; i < 19; ++i) {
         float cu = 3.f * (cx[i]*ux + cy[i]*uy + cz[i]*uz);
-        float feq = w[i] * rho * (1.f + cu + 0.5f*cu*cu - usq);
-        f_out[i*nc + idx] = fi[i] - omega * (fi[i] - feq);
+        feq[i] = w[i] * rho * (1.f + cu + 0.5f*cu*cu - usq);
+        float fn = fi[i] - feq[i];
+        pxx += cx[i]*cx[i]*fn; pyy += cy[i]*cy[i]*fn; pzz += cz[i]*cz[i]*fn;
+        pxy += cx[i]*cy[i]*fn; pxz += cx[i]*cz[i]*fn; pyz += cy[i]*cz[i]*fn;
+    }
+    // Smagorinsky eddy viscosity -> local relaxation rate.
+    float pimag = sqrtf(pxx*pxx + pyy*pyy + pzz*pzz
+                        + 2.f*(pxy*pxy + pxz*pxz + pyz*pyz));
+    float tau0 = 1.f / omega;
+    float taut = 0.5f*(tau0 + sqrtf(tau0*tau0
+                       + 25.45584412f*csmag*csmag*pimag/rho));  // 18*sqrt(2)
+    float om = 1.f / taut;
+    float tr3 = (pxx + pyy + pzz) * (1.f/3.f);
+    // Rebuild the regularised non-equilibrium and write.
+    for (int i = 0; i < 19; ++i) {
+        float cpc = cx[i]*cx[i]*pxx + cy[i]*cy[i]*pyy + cz[i]*cz[i]*pzz
+                  + 2.f*(cx[i]*cy[i]*pxy + cx[i]*cz[i]*pxz + cy[i]*cz[i]*pyz);
+        float fnreg = 4.5f * w[i] * (cpc - tr3);
+        f_out[i*nc + idx] = feq[i] + (1.f - om) * fnreg;
     }
 }
 '''
@@ -102,11 +133,15 @@ W3 = np.array([1 / 3] + [1 / 18] * 6 + [1 / 36] * 12)
 
 
 class LBM3D_CUDA:
-    def __init__(self, nx, ny, nz, *, u_lb, re, char_length):
+    def __init__(self, nx, ny, nz, *, u_lb, re, char_length,
+                 collision="bgk", c_smag=0.16):
         self.nx, self.ny, self.nz = nx, ny, nz
         self.u_lb = u_lb
         self.nu = u_lb * char_length / re
         self.omega = np.float32(1.0 / (3.0 * self.nu + 0.5))
+        # "les" = regularised collision + Smagorinsky LES (stable at high Re).
+        self._les = np.int32(1 if collision == "les" else 0)
+        self._csmag = np.float32(c_smag)
         self.nc = nx * ny * nz
         self._kernel = cp.RawKernel(_KERNEL, "lbm_step")
 
@@ -143,7 +178,8 @@ class LBM3D_CUDA:
         self._kernel((self._blocks,), (self._threads,),
                      (self.f_a, self.f_b, self.solid,
                       np.int32(self.nx), np.int32(self.ny), np.int32(self.nz),
-                      self.omega, np.float32(self.u_lb)))
+                      self.omega, np.float32(self.u_lb), self._les,
+                      self._csmag))
         self.f_a, self.f_b = self.f_b, self.f_a
 
     def macroscopic(self):
