@@ -4,3 +4,5 @@
 cupy-cuda12x[ctk]>=14.0
 # 3D vortex visualisation (render_3d.py): marching-cubes isosurfaces.
 scikit-image>=0.22
+# Real-time interactive 3D viewer (live_viewer_3d.py): VTK-based rendering.
+pyvista>=0.45

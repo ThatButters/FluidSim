@@ -95,11 +95,12 @@ voxelisation → 3D flow. Mid-span section (left) and planform/tips (right):
       CuPy backend**, field-matched to the reference (0.24% RMS). Real-time 3D at
       useful resolution (256³ ≈ 180 steps/s) is now reachable.
 - [ ] Further kernel tuning (FP16 + single-buffer esoteric-pull) for the last ~3×
-- [x] 3D vortex visualisation — Q-criterion vortex-core isosurfaces + body,
-      rendered in 3D (`render_3d.py`; a matplotlib stand-in)
-- [ ] Real-time interactive GPU renderer (volume smoke, smooth isosurfaces,
-      surface pressure, orbit camera; zero-copy from the solver)
-- [ ] Interactive 3D controls + per-domain analytics (planes / helis / drones)
+- [x] 3D vortex visualisation — Q-criterion vortex-core isosurfaces (`render_3d.py`)
+- [x] **Real-time interactive 3D viewer** (`live_viewer_3d.py`) — orbit/zoom
+      around an imported wing while the GPU simulates; live vortex-core
+      isosurfaces (the wingtip vortices), VTK-rendered
+- [ ] Polish the renderer (volume smoke, surface pressure, live AoA/wind controls)
+- [ ] Per-domain analytics (planes / helis / drones) + force in the CUDA path
 - [ ] **Validate against real RC datasets** at the operating Reynolds number
       (UIUC propeller database, UIUC low-Re airfoil polars) — the accuracy bar
       that matters before anyone trusts a number for a real build
@@ -122,6 +123,8 @@ python live_viewer.py                # REAL-TIME interactive wind tunnel (GPU)
 python validate_sphere.py            # 3D solver: flow past a sphere (Re=100)
 python demo_stl_flow.py              # 3D: import an STL wing, flow past it
 python validate_cuda.py              # fused CUDA kernel: correctness + ~3000 MLUPS
+python render_3d.py                  # 3D vortex-core isosurface render (still)
+python live_viewer_3d.py             # REAL-TIME interactive 3D wind tunnel
 ```
 
 ### Live interactive viewer
