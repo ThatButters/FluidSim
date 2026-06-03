@@ -106,9 +106,11 @@ voxelisation → 3D flow. Mid-span section (left) and planform/tips (right):
 - [ ] Rotor/prop analytics (thrust, torque, figure of merit) in the CUDA path
 - [ ] Polish the renderer (volume smoke, surface pressure, live AoA/wind controls)
 - [ ] Per-domain dashboard (planes / helis / drones)
-- [ ] **Validate against real RC datasets** at the operating Reynolds number
-      (UIUC propeller database, UIUC low-Re airfoil polars) — the accuracy bar
-      that matters before anyone trusts a number for a real build
+- [x] **First validation vs real wind-tunnel data** (UIUC E387, Re=100k): lift
+      slope within ~25%, but camber lift lost and drag ~4× high — resolution-
+      limited, **not yet trustworthy at RC conditions** (honest; see VALIDATION.md)
+- [ ] Native-CUDA 2D kernel + interpolated bounce-back → the resolution to
+      close the E387 gap, then re-validate against the same data
 
 See **[docs/VALIDATION.md](docs/VALIDATION.md)** for the full accuracy results so
 far, and an honest account of what has *not* yet been validated.
@@ -132,6 +134,7 @@ python render_3d.py                  # 3D vortex-core isosurface render (still)
 python live_viewer_3d.py             # REAL-TIME interactive 3D wind tunnel
 python demo_wing_analytics.py        # 3D finite-wing polar (Cl/Cd/L-D)
 python validate_collision.py         # BGK vs regularised+LES stability ceiling
+python validate_e387.py              # vs REAL UIUC E387 wind-tunnel data
 ```
 
 ### Live interactive viewer

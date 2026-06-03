@@ -44,6 +44,28 @@ within **roughly 1–7 %**:
 
 For a from-scratch solver at modest (CPU-affordable) resolution, this is solid.
 
+## First comparison to REAL wind-tunnel data (E387, Re=100k)
+
+We ran the actual Eppler E387 geometry (UIUC coordinates) at a real RC Reynolds
+number with the LES operator and compared to the UIUC wind-tunnel reference
+(`validate_e387.py`). The honest scorecard:
+
+| quantity | FluidSim | UIUC ref | error |
+| --- | --- | --- | --- |
+| lift-curve slope | 0.075 /deg | 0.100 /deg | −25 % |
+| Cl at 0° | −0.01 | +0.40 | camber lift **missed** |
+| Cd_min | 0.053 | 0.012 | **+341 %** |
+
+**Verdict:** the fundamental aerodynamics work (lift rises with angle, slope in
+the right ballpark) but the result is **not yet quantitatively trustworthy** at
+RC conditions — the camber lift is washed out and drag is ~4× too high. The cause
+is **resolution, not a physics bug**: at Re=100k with ~130 cells of chord and a
+staircased surface, neither the ~4-cell camber nor the boundary layer is
+resolvable. LES delivered *stability* at this Reynolds number; *accuracy* needs
+~5–10× finer grids. The clear path: a native-CUDA 2D kernel (≈50× faster, proven
+in 3D) to afford the resolution, plus interpolated bounce-back to remove
+staircasing — then rerun this exact test against the same data.
+
 ## What has NOT been validated yet — and it's the part that matters most
 
 **Every result above is at Reynolds number ≤ 100, in 2D, fully laminar.**
