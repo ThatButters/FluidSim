@@ -15,10 +15,52 @@ import sys
 import os
 
 import pyvista as pv
+import vtk
 from PySide6 import QtCore, QtGui, QtWidgets
 from pyvistaqt import QtInteractor
 
 from flow_model import FlowModel
+
+
+class ModelDragStyle(vtk.vtkInteractorStyleTrackballCamera):
+    """Left-drag turns the MODEL in the (fixed) wind; right-drag orbits the
+    camera; the wheel zooms. Model rotation previews live and re-meshes on
+    release."""
+
+    def __init__(self, win):
+        super().__init__()
+        self._win = win
+        self._drag = False
+        self.AddObserver("LeftButtonPressEvent", self._lp)
+        self.AddObserver("LeftButtonReleaseEvent", self._lr)
+        self.AddObserver("RightButtonPressEvent", self._rp)
+        self.AddObserver("RightButtonReleaseEvent", self._rr)
+        self.AddObserver("MouseMoveEvent", self._mv)
+
+    def _lp(self, *_):
+        self._drag = True
+        self._x0, self._y0 = self.GetInteractor().GetEventPosition()
+        self._p0, self._yw0 = self._win.model.pitch, self._win.model.yaw
+        self._win.begin_drag()
+
+    def _lr(self, *_):
+        if self._drag:
+            self._drag = False
+            self._win.commit_orientation()
+
+    def _rp(self, *_):
+        self.StartRotate()            # camera orbit on the right button
+
+    def _rr(self, *_):
+        self.EndRotate()
+
+    def _mv(self, *_):
+        if self._drag:
+            x, y = self.GetInteractor().GetEventPosition()
+            self._win.preview_orientation(self._p0 - (y - self._y0) * 0.3,
+                                          self._yw0 + (x - self._x0) * 0.3)
+        else:
+            self.OnMouseMove()        # right-orbit / hover handled by parent
 
 # -- palette -----------------------------------------------------------------
 BG = "#0b0f17"
@@ -70,6 +112,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.model = FlowModel()
         self.playing = True
         self.spf = 8
+        self._dragging = False
+        self._preview = (self.model.pitch, self.model.yaw)
+        self._body_actor = None
+        self._vortex_actor = None
         self._fps_t = QtCore.QElapsedTimer(); self._fps_t.start()
         self._frames = 0
 
@@ -90,6 +136,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plotter = QtInteractor(central)
         self.plotter.set_background(BG)
         lay.addWidget(self.plotter.interactor, 1)
+        self._install_drag_style()
 
         lay.addWidget(self._panel())
         self.setCentralWidget(central)
@@ -197,8 +244,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plotter.add_mesh(arrow, color="#ffb454", name="wind")
         self.plotter.add_text("WIND  →", position="lower_left",
                               font_size=12, color="#ffb454")
-        self.plotter.add_mesh(self.model.body, color="#c9d4e3",
-                              smooth_shading=True)
+        self._body_actor = self.plotter.add_mesh(
+            self.model.body, color="#c9d4e3", smooth_shading=True, name="body")
         self._draw_vortex()
         self.plotter.camera_position = "yz"
         self.plotter.camera.azimuth = 35
@@ -206,8 +253,54 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plotter.reset_camera()
 
     def _draw_vortex(self):
-        self.plotter.add_mesh(self.model.vortex_mesh(), name="vortex",
-                              color=ACCENT, opacity=0.45, smooth_shading=True)
+        self._vortex_actor = self.plotter.add_mesh(
+            self.model.vortex_mesh(), name="vortex", color=ACCENT,
+            opacity=0.45, smooth_shading=True)
+
+    def _install_drag_style(self):
+        try:
+            self._style = ModelDragStyle(self)
+            for getter in (lambda: self.plotter.iren.interactor,
+                           lambda: self.plotter.render_window.GetInteractor()):
+                try:
+                    getter().SetInteractorStyle(self._style)
+                    return
+                except Exception:
+                    continue
+        except Exception:
+            pass            # fall back to default camera controls
+
+    # -- mouse drag = rotate the model in the fixed wind --------------------
+    def begin_drag(self):
+        self._dragging = True
+
+    def preview_orientation(self, pitch, yaw):
+        pitch = max(-18.0, min(18.0, pitch))
+        yaw = max(-60.0, min(60.0, yaw))
+        self._preview = (pitch, yaw)
+        c = (self.model.nx / 2.0, self.model.ny / 2.0, self.model.nz / 2.0)
+        for act in (self._body_actor, self._vortex_actor):
+            if act is not None:
+                try:
+                    act.origin = c
+                    act.orientation = (0.0, yaw, -pitch)
+                except Exception:
+                    pass
+        self.pitch.blockSignals(True); self.yaw.blockSignals(True)
+        self.pitch.setValue(int(round(pitch))); self.yaw.setValue(int(round(yaw)))
+        self.pitch.blockSignals(False); self.yaw.blockSignals(False)
+        self.pitch_lbl.setText(f"{int(round(pitch)):+d}°")
+        self.yaw_lbl.setText(f"{int(round(yaw)):+d}°")
+        self.plotter.render()
+
+    def commit_orientation(self):
+        self._dragging = False
+        pitch, yaw = self._preview
+        self.status.showMessage("Re-meshing at new orientation …")
+        QtWidgets.QApplication.processEvents()
+        self.model.set_orientation(pitch, yaw)
+        self._draw_static()
+        self.status.showMessage("GPU live")
 
     # -- actions ------------------------------------------------------------
     def _open(self, stl, initial=False):
@@ -269,7 +362,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # -- loop ---------------------------------------------------------------
     def _tick(self):
-        if self.playing and self.model.sim is not None:
+        if self.playing and not self._dragging and self.model.sim is not None:
             self.model.step(self.spf)
             self._draw_vortex()
             cl, cd, ld = self.model.coefficients()

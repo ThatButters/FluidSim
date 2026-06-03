@@ -104,6 +104,11 @@ class FlowModel:
         self.yaw = float(yaw)
         self._rebuild(warmup=600)
 
+    def set_orientation(self, pitch, yaw):
+        """Set pitch and yaw together (one rebuild) -- used by mouse drag."""
+        self.pitch, self.yaw = float(pitch), float(yaw)
+        self._rebuild(warmup=600)
+
     def set_reynolds(self, re):
         self.re = float(re)
         nu = self.u_lb * self.char_length / self.re
