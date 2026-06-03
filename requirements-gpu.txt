@@ -1,0 +1,4 @@
+# Optional GPU backend (NVIDIA, CUDA 12.x+ driver; Blackwell/RTX 50-series OK).
+# The [ctk] extra bundles the CUDA headers/nvrtc so no system CUDA install is
+# needed. The solver runs identical code on this backend via array_module=cupy.
+cupy-cuda12x[ctk]>=14.0

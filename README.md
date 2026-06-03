@@ -77,7 +77,10 @@ fluid and spins it up, stably, over many revolutions:
 
 **The road to a usable tool:**
 
-- [ ] GPU port for real-time performance (native CUDA, RTX-class)
+- [x] GPU solver — backend-agnostic (NumPy/CuPy); validated to machine precision
+      against the CPU reference; 10–23× faster and scaling with domain size
+- [ ] Native-CUDA optimisation (fused collide-stream kernels, packed FP32/16
+      layout) for the full ~100×+ and real-time performance
 - [ ] 3D + STL import + voxelisation
 - [ ] Real-time interactive flow visualisation
 - [ ] Per-domain analytics (planes / helis / drones)
@@ -98,7 +101,12 @@ python validate_taylor_couette.py    # rotating-boundary validation
 python validate_dfg.py               # Schäfer-Turek benchmark
 python demo_rotor.py                 # spinning rotor (sweeping geometry)
 python demo_airfoil.py               # NACA 0012 lift/drag polar sweep
+python gpu_benchmark.py              # GPU vs CPU: correctness + speed-up
 ```
+
+For the GPU backend (NVIDIA): `pip install -r requirements-gpu.txt`, then pass
+`array_module=cupy` when constructing the solver. The GPU runs the identical
+code and is validated to match the CPU reference to machine precision.
 
 Output (vorticity frames, plots, data) is written to `out/`.
 
