@@ -7,10 +7,28 @@ it in real time — the actual flow (wakes, vortices, pressure) plus the numbers
 that matter (lift, drag, thrust, efficiency). Built for **RC airplanes, RC
 helicopters, and multirotor drones** alike.
 
-> **Status: early development.** The physics core is being built and validated
-> from the ground up. It is not yet a usable end-user app — see
-> [Roadmap](#roadmap). What works today is a validated 2D reference solver,
-> including the hard part: rotating boundaries.
+> **Status: working tool, honest about its limits.** Validated 2D + 3D GPU
+> solvers, STL import, a real-time interactive 3D viewer, and a high-accuracy
+> batch mode. It is **excellent for flow visualisation and comparing designs**,
+> and quantitatively trustworthy for bluff-body / attached flows — with its one
+> hard limit (absolute accuracy on transition-dominated low-Re airfoils) stated
+> plainly. See [Accuracy](docs/VALIDATION.md).
+
+## Quick start
+
+Requires an NVIDIA GPU (Blackwell/RTX 50-series and others).
+
+```bash
+pip install -r requirements.txt -r requirements-gpu.txt
+
+python fluidsim.py demo                 # built-in wing in a live 3D wind tunnel
+python fluidsim.py view  myplane.stl    # drop in YOUR model, watch it live
+python fluidsim.py report myplane.stl   # run + print drag / forces
+python fluidsim.py validate             # run the validation suite
+```
+
+In the live viewer: drag to orbit, scroll to zoom, arrow keys change the angle of
+attack, `space` pauses, `q` quits — with live Cl/Cd/L-D in the corner.
 
 ---
 

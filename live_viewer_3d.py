@@ -48,7 +48,7 @@ def q_criterion_gpu(u):
 
 
 class Viewer3D:
-    def __init__(self, nx, ny, nz, aoa, spf=8):
+    def __init__(self, nx, ny, nz, aoa, spf=8, stl_path=None):
         self.nx, self.ny, self.nz = nx, ny, nz
         self.aoa, self.spf = aoa, spf
         self.paused = False
@@ -56,11 +56,16 @@ class Viewer3D:
 
         out = os.path.join(os.path.dirname(__file__), "out")
         os.makedirs(out, exist_ok=True)
-        stl = os.path.join(out, "test_wing.stl")
-        if not os.path.exists(stl):
-            write_binary_stl(stl, naca_wing(1.0, 1.6, 0.12))
-        tris = rotate_aoa(load_binary_stl(stl), aoa)
+        if stl_path is None:                          # built-in demo wing
+            stl_path = os.path.join(out, "test_wing.stl")
+            if not os.path.exists(stl_path):
+                write_binary_stl(stl_path, naca_wing(1.0, 1.6, 0.12))
+        print(f"Loading {os.path.basename(stl_path)} ...", flush=True)
+        tris = rotate_aoa(load_binary_stl(stl_path), aoa)
         self.mask = voxelize(fit_to_grid(tris, nx, ny, nz, 0.22), nx, ny, nz)
+        if int(self.mask.sum()) == 0:
+            raise SystemExit("Voxelisation produced an empty model -- is the "
+                             "STL a valid binary mesh?")
         self.area = float(self.mask.any(axis=1).sum())   # planform (for Cl/Cd)
 
         self._build()
@@ -145,11 +150,13 @@ class Viewer3D:
 
 def main():
     p = argparse.ArgumentParser(description="FluidSim live 3D viewer")
+    p.add_argument("stl", nargs="?", default=None,
+                   help="path to a binary .stl model (omit for the demo wing)")
     p.add_argument("--n", type=int, nargs=3, default=[150, 96, 120],
                    metavar=("NX", "NY", "NZ"))
     p.add_argument("--aoa", type=float, default=9.0)
     args = p.parse_args()
-    v = Viewer3D(args.n[0], args.n[1], args.n[2], args.aoa)
+    v = Viewer3D(args.n[0], args.n[1], args.n[2], args.aoa, stl_path=args.stl)
     v.run()
 
 
