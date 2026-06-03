@@ -23,14 +23,27 @@ pip install -r requirements.txt -r requirements-gpu.txt
 
 python fluidsim.py gui                   # the desktop app  ← start here
 python fluidsim.py gui    myplane.stl    # open straight into your model
+python fluidsim.py gui    myprop.stl     # (switch to Propeller mode to spin it)
 python fluidsim.py report myplane.stl    # headless: run + print drag / forces
 python fluidsim.py validate              # run the validation suite
 ```
 
-**The desktop app** is a native window with the live GPU flow embedded: import an
-STL, watch the vortices form as you orbit the camera, and **turn the model in the
-wind** with the pitch and yaw sliders (a wind-direction arrow shows the flow)
-while the **wind-speed** slider and the live lift / drag / L-D update the flow.
+**The desktop app** is a native window with the live GPU flow embedded, with two
+modes you switch between at the top of the panel:
+
+- **Wind tunnel** — import an STL, watch the vortices form as you orbit the
+  camera, and **turn the model in the wind** with the pitch and yaw sliders (or
+  by dragging it) while the **wind-speed** slider and the live lift / drag / L-D
+  update the flow.
+- **Propeller** — load a prop STL and **spin it on the spot**: the blades
+  physically sweep the grid, flinging a swirling slipstream. **Any prop STL is
+  auto-oriented** (the shaft is detected and aligned to the spin axis, so it
+  never tumbles end-over-end), with **CW/CCW direction** and **flip-over**
+  toggles. Sliders for rotation speed and flight speed (**0 = static / hover**),
+  a **lift & efficiency** readout (thrust, figure of merit, lift-per-power, shaft
+  power) plus advance ratio / swirl / tip Mach, and a one-click **performance
+  sweep** (hover lift-vs-RPM or cruise vs advance ratio) that saves the curves.
+
 Dark, clean, and built for tinkering. (`python fluidsim.py view` is a lighter
 chrome-free viewer if you prefer.)
 
@@ -125,7 +138,30 @@ voxelisation → 3D flow. Mid-span section (left) and planform/tips (right):
       in the 3D viewer HUD; 3D finite-wing polar (lift slope matches theory)
 - [x] Regularised collision + Smagorinsky LES — stable into the RC regime
       (2D to Re 40k, 3D to Re 20k; BGK dies ~Re 1–2k). Matches BGK at low Re.
-- [ ] Rotor/prop analytics (thrust, torque, figure of merit) in the CUDA path
+- [x] **Propeller mode** — a spinning STL in the 3D CUDA solver: the blades
+      physically sweep the lattice (pre-rotated mask bank + moving-wall
+      bounce-back + fresh-cell refill), validated stable over many revolutions
+      with a steady swirling slipstream and a well-defined reacted torque
+      (`validate_prop.py`). Wired into the GUI as a mode toggle.
+  - [x] **Auto-orientation** — any prop STL is rotated into the solver's frame by
+        detecting the shaft as the mesh's thinnest principal axis, so it spins
+        flat instead of tumbling; with CW/CCW direction and flip-over (handedness-
+        preserving) controls. CPU regression in `test_orient.py`.
+  - [x] **Performance readout & sweeps** — operating-point metrics (thrust,
+        figure of merit, lift-per-power, C_T/C_P, cruise efficiency η, advance
+        ratio) and one-click hover (lift-vs-RPM) / cruise (vs-J) performance
+        curves (`sweep_rpm`/`sweep_j`, `demo_prop_sweep.py`).
+  - [x] **Static / hover stability** — a non-reflecting anti-bounce-back pressure
+        outlet (gated to static; cruise keeps the validated outflow) fixes the
+        closed-tank blow-up, so the prop runs at J=0 across the RPM range.
+  - [ ] **Absolute hover figure-of-merit** — *not yet physical.* The non-reflecting
+        outlet gives **stability**, but a fixed-velocity inlet **starves the disk**
+        (steady-state FM lands low ~3–5%); a true entrainment inlet makes the
+        two-pressure-boundary system ill-posed. Needs a larger domain + far-field
+        (characteristic) BCs. Tracked in **[docs/PROP_NOTES.md](docs/PROP_NOTES.md)**.
+      - *Robust: shaft power, torque, C_P, swirl, and trends. Estimated (low-Re
+        force caveat, for comparison only): thrust, C_T, η, figure of merit,
+        lift-per-power. See VALIDATION.md and PROP_NOTES.md.*
 - [ ] Polish the renderer (volume smoke, surface pressure, live AoA/wind controls)
 - [ ] Per-domain dashboard (planes / helis / drones)
 - [x] **Native-CUDA 2D kernel** (`lbm2d_cuda.py`) — ~31,000 MLUPS, ~400× CuPy;
@@ -169,6 +205,9 @@ python live_viewer_3d.py             # REAL-TIME interactive 3D wind tunnel
 python demo_wing_analytics.py        # 3D finite-wing polar (Cl/Cd/L-D)
 python validate_collision.py         # BGK vs regularised+LES stability ceiling
 python validate_e387.py              # vs REAL UIUC E387 wind-tunnel data
+python validate_prop.py              # spinning prop: stable slipstream + torque
+python demo_prop_sweep.py --mode hover   # prop performance map (hover lift / cruise)
+python test_orient.py                # prop auto-orientation regression (CPU, no GPU)
 ```
 
 ### Live interactive viewer

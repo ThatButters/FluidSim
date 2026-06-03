@@ -129,6 +129,42 @@ interactive; an affordable transition model resisted a simple solution. That is
 the truthful bound, and no free tool at this scale clears it without research-grade
 transition modelling.
 
+## Propeller mode — the spinning-geometry mechanism (validated), thrust (caveated)
+
+Propeller mode spins an imported prop about the flow axis. The blades *physically
+sweep* the lattice: a bank of pre-rotated solid masks is cycled at the true
+rotation rate, the CUDA kernel applies the moving-wall velocity at the blade
+surfaces (the same Ladd correction validated to 0.29 % on Taylor–Couette), and
+cells uncovered by a passing blade are refilled at the local rigid-body velocity.
+`validate_prop.py` is the go/no-go gate.
+
+| quantity | result | tier |
+| --- | --- | --- |
+| stability | **stable over many revolutions** (steady to machine-finite; torque-flux pinned to <0.1 % drift across revs 1→4) | self-consistency |
+| swirl (angular momentum into the wake) | **~19 % of tip speed**, steady | self-consistency |
+| reacted torque (wake angular-momentum flux) | **well-defined and steady** (7.2, lattice units) | self-consistency |
+| advance-ratio response | braking at high $J$, more thrust as $J$ falls — **physically correct** | qualitative |
+| absolute thrust | **not certified** (see below) | — |
+
+**What this proves.** The make-or-break feature — *stable rotating geometry that
+exchanges momentum with the fluid in 3D on the GPU* — works. The prop drives a
+coherent, swirling slipstream, and the **torque and swirl are robust** because
+they are carried by the moving wall and integrate cleanly in the wake. This is
+the heart of what makes a propeller/rotor tool possible.
+
+**The honest caveat on absolute thrust.** A coarsely-voxelised model prop runs at
+a low chord-Reynolds number (~50–130 here), and at that regime a voxelised blade
+is a mediocre lifting surface: its blockage and viscous drag are comparable to its
+thrust, so the *net axial* force is small and sign-sensitive (our flat-plate test
+prop is a net drag disk; a cambered one does better). This is the **same low-Re
+force limit documented above for airfoils**, now showing up for props — not a new
+bug. So propeller mode is **trustworthy for visualising the wake, for swirl/torque,
+and for comparing props**, and absolute thrust carries the low-Re caveat. The GUI
+reports tip Mach, advance ratio $J$, swirl and reacted torque (the robust numbers)
+and is honest in-app about thrust. Calibrated absolute thrust is the same target as
+the UIUC Propeller Database validation below — reachable with resolution, not yet
+certified.
+
 ## What has NOT been validated yet — and it's the part that matters most
 
 **Every result above is at Reynolds number ≤ 100, in 2D, fully laminar.**

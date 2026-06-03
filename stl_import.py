@@ -97,6 +97,161 @@ def naca_wing(chord=1.0, span=2.0, thickness=0.12, n=40):
     return np.array(tris, dtype=np.float32)
 
 
+def _box_tris(corners):
+    """12 triangles (a closed box) from 8 corners ordered as the cube vertices
+    (a,b,c) with a fastest: 000,001,010,011,100,101,110,111."""
+    c = corners
+    quads = [(0, 2, 3, 1), (4, 5, 7, 6),          # a- / a+ faces
+             (0, 1, 5, 4), (2, 6, 7, 3),          # c- / c+ faces
+             (0, 4, 6, 2), (1, 3, 7, 5)]          # b- / b+ faces
+    tris = []
+    for p, q, r, s in quads:
+        tris += [[c[p], c[q], c[r]], [c[p], c[r], c[s]]]
+    return tris
+
+
+def make_prop(n_blades=2, radius=1.0, root=0.14, chord=0.30,
+              thickness=0.055, pitch_deg=18.0, camber=0.09, n_chord=10):
+    """A propeller test mesh: a hub plus `n_blades` cambered, pitched blades.
+
+    The disk lies in the y-z plane so it spins about +x (the flow/thrust axis,
+    matching the solver's spin convention). Each blade is a thin *cambered*
+    plate (a curved mean line) -- crucial because at the low chord-Reynolds
+    numbers of a voxelised model prop, a flat plate is a poor lifting surface
+    but a cambered plate generates real thrust. Each blade is pitched about its
+    own radial axis. Watertight, so the parity voxeliser fills it.
+    """
+    phi = np.radians(pitch_deg)
+    cp_, sp = np.cos(phi), np.sin(phi)
+    t2, c2 = thickness / 2.0, chord / 2.0
+    height = camber * chord
+    tris = []
+
+    # Hub: a small cube straddling the origin, spanning the spin axis.
+    # Corners ordered 000..111 with a(=x) fastest, to match _box_tris.
+    h = max(root, thickness)
+    hub = [[sx * thickness, sy * h, sz * h]
+           for sz in (-1, 1) for sy in (-1, 1) for sx in (-1, 1)]
+    tris += _box_tris(np.array(hub, dtype=np.float32))
+
+    bs = np.linspace(-c2, c2, n_chord + 1)        # chordwise stations
+    spans = (root, radius)                         # root, tip
+
+    for k in range(n_blades):
+        theta = 2 * np.pi * k / n_blades
+        ct, st = np.cos(theta), np.sin(theta)
+
+        def xf(a, b, c):
+            ap = a * cp_ - b * sp                  # pitch about radial axis
+            bp = a * sp + b * cp_
+            return [ap, bp * (-st) + c * ct, bp * ct + c * st]
+
+        # top/bottom surface grids: a = mean-line(b) +/- t2
+        top, bot = [], []
+        for si, cc in enumerate(spans):
+            tr, br = [], []
+            for b in bs:
+                m = height * (1.0 - (b / c2) ** 2)  # parabolic camber
+                tr.append(xf(m + t2, b, cc))
+                br.append(xf(m - t2, b, cc))
+            top.append(tr); bot.append(br)
+
+        def quad(p, q, r, s):
+            tris.append([p, q, r]); tris.append([p, r, s])
+
+        for i in range(n_chord):                    # top & bottom sheets
+            quad(top[0][i], top[0][i+1], top[1][i+1], top[1][i])
+            quad(bot[0][i], bot[1][i], bot[1][i+1], bot[0][i+1])
+        for i in range(n_chord):                    # root & tip edges
+            quad(top[0][i], top[0][i+1], bot[0][i+1], bot[0][i])
+            quad(top[1][i], bot[1][i], bot[1][i+1], top[1][i+1])
+        # leading & trailing edge caps
+        quad(top[0][0], bot[0][0], bot[1][0], top[1][0])
+        quad(top[0][n_chord], top[1][n_chord], bot[1][n_chord], bot[0][n_chord])
+
+    return np.array(tris, dtype=np.float32)
+
+
+# -- orientation (auto-detect the spin axis) ---------------------------------
+def principal_frame(tris):
+    """Area-weighted principal axes of a triangle mesh, ordered by ascending
+    extent.
+
+    Returns ``(centroid (3,), axes (3,3) rows=unit dirs, extents (3,))``. The
+    first axis is the mesh's *thinnest* direction; for a propeller that is the
+    shaft -- the disk's normal, i.e. the axis it should spin about. Weighting by
+    triangle area (not raw vertices) keeps the result independent of how finely
+    each face happens to be tessellated.
+    """
+    v = tris.reshape(-1, 3, 3)
+    c = v.mean(axis=1)                                  # triangle centroids
+    e1, e2 = v[:, 1] - v[:, 0], v[:, 2] - v[:, 0]
+    area = 0.5 * np.linalg.norm(np.cross(e1, e2), axis=1)
+    w = area / max(area.sum(), 1e-12)
+    centroid = (w[:, None] * c).sum(0)
+    d = c - centroid
+    cov = np.einsum("n,ni,nj->ij", w, d, d)             # area-weighted covariance
+    _, evecs = np.linalg.eigh(cov)
+    axes = evecs.T                                      # rows = principal dirs
+    P = tris.reshape(-1, 3)
+    exts = np.array([np.ptp(P @ axes[k]) for k in range(3)])
+    order = np.argsort(exts)                            # ascending extent
+    return centroid, axes[order], exts[order]
+
+
+def orient_prop_to_spin_axis(tris, flatness_max=0.6, flip=False):
+    """Rotate a propeller mesh into the solver's canonical frame.
+
+    The solver always spins about +x with the disk in the y-z plane (see
+    PropModel). A propeller exported by someone else can have its shaft on any
+    axis -- if it does, the solver spins it about the wrong axis and the blades
+    tumble end-over-end instead of sweeping a disk. This detects the shaft as
+    the mesh's thinnest principal axis and rotates the geometry so the hub sits
+    at the origin and the shaft lies along +x.
+
+    The shaft *direction* from PCA is sign-ambiguous, so a prop can come out
+    facing the wrong way (effectively upside-down). ``flip=True`` turns it 180
+    deg about an in-plane axis -- swapping which face leads -- to correct that.
+    The flip is a proper rotation (det +1), so it never changes the prop's
+    handedness (CW/CCW); spin direction is a separate control on PropModel.
+
+    Only a clearly flat (disk-like) mesh is touched: if the thinnest/next-axis
+    extent ratio is above ``flatness_max`` the mesh isn't prop-like and is
+    returned unchanged. Returns ``(oriented_tris (N,3,3) float32, info)`` where
+    ``info`` records ``shaft``, ``centroid``, ``extents``, ``flatness``,
+    ``reoriented`` and ``flipped``.
+    """
+    centroid, axes, exts = principal_frame(tris)
+    flatness = float(exts[0] / max(exts[1], 1e-12))
+    info = {"centroid": centroid, "shaft": axes[0], "extents": exts,
+            "flatness": flatness, "reoriented": False, "flipped": False}
+    if flatness > flatness_max:                         # not clearly a disk
+        return tris.astype(np.float32), info
+    x = axes[0] / np.linalg.norm(axes[0])               # shaft -> +x
+    y = axes[1] - (axes[1] @ x) * x                     # re-orthonormalise
+    y /= np.linalg.norm(y)
+    z = np.cross(x, y)
+    if flip:                                            # 180 deg about z: x,y -> -x,-y
+        x, y = -x, -y                                   # (proper rotation, det +1)
+        info["flipped"] = True
+    M = np.column_stack([x, y, z])                      # new = (p - hub) @ M
+    out = ((tris.reshape(-1, 3) - centroid) @ M).reshape(tris.shape)
+    info["reoriented"] = True
+    return out.astype(np.float32), info
+
+
+def flip_over(tris):
+    """Turn a mesh 180 deg about its in-plane axis, in place (keeps its current
+    orientation, just swaps which face leads). For fixing an upside-down prop
+    when auto-orientation is *off*. Proper rotation, so handedness is preserved.
+    """
+    centroid, axes, _ = principal_frame(tris)
+    a = axes[2]                                         # an in-plane axis
+    R = 2.0 * np.outer(a, a) - np.eye(3)               # 180 deg about a
+    out = ((tris.reshape(-1, 3) - centroid) @ R.T + centroid).reshape(tris.shape)
+    return out.astype(np.float32)
+
+
 # -- voxelisation ------------------------------------------------------------
 def fit_to_grid(tris, nx, ny, nz, margin=0.15):
     """Scale & centre a mesh to fill a fraction of an (nx,ny,nz) grid."""

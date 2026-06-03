@@ -3,6 +3,8 @@ FluidSim -- a free, open-source GPU wind tunnel for the RC community.
 
 One entry point for the whole tool. Import an .stl of your design and either
 *watch* the air flow over it in real time, or *report* the aerodynamic numbers.
+The desktop app has two modes: a wind tunnel (hold a model in the wind) and a
+propeller test (spin a prop on the spot and read swirl / torque).
 
     python fluidsim.py gui                     # the desktop app (recommended)
     python fluidsim.py view  myplane.stl     # quick real-time viewer
@@ -114,7 +116,7 @@ def cmd_validate(args):
     _need_gpu()
     import subprocess
     suite = ["validate_cylinder.py", "validate_taylor_couette.py",
-             "validate_sphere.py", "gpu_benchmark.py"]
+             "validate_sphere.py", "validate_prop.py", "gpu_benchmark.py"]
     print("Running the validation suite (this takes a few minutes):")
     for s in suite:
         print(f"\n--- {s} ---")
