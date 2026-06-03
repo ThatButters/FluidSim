@@ -261,13 +261,25 @@ Re = 100 cylinder; see `diag_force.py`.)
   **Schäfer–Turek (DFG) benchmark**: $C_{d,\max}=3.28$, $C_{l,\max}=0.94$,
   $\mathrm{St}=0.306$, all matching the published reference values.
 - Correct **rotating-boundary physics** — Taylor–Couette to 0.29 % RMS vs the
-  exact solution. *This is the hard part, and it works.*
+  exact solution.
+- Correct **sweeping rotating geometry** — a blade that physically moves through
+  the grid (re-voxelised every step, with its uncovered cells refilled) spins up
+  still fluid stably over many revolutions, validated via the angular-momentum
+  budget. *This — a true spinning rotor — is the hard part, and it works.*
 
-**The road to a usable tool** (see the README roadmap): truly sweeping rotating
-geometry (a blade that physically moves through the grid), then the native-CUDA
-GPU port for real-time speed, then 3D + STL import + interactive visualisation,
-then the per-domain analytics that turn a flow field into the answers a plane,
-heli, or drone builder actually asks.
+How accurate is all this? Against experiment-validated references we land within
+**~1–7 %** so far — but **every one of those checks is at low Reynolds number, in
+2D, and laminar.** Real RC aircraft live at far higher Reynolds numbers in 3D with
+turbulence, which we have **not** validated yet. The full, honest accounting —
+numbers *and* caveats — is in **[VALIDATION.md](VALIDATION.md)**.
+
+**The road to a usable tool** (see the README roadmap): the native-CUDA GPU port
+for real-time speed, then 3D + STL import + interactive visualisation, then the
+per-domain analytics that turn a flow field into the answers a plane, heli, or
+drone builder actually asks — and, crucially, **validation against real RC
+datasets** (UIUC propeller and airfoil data) at the true operating Reynolds
+number, which is the accuracy bar that matters before any output can be trusted
+for a real build.
 
 The strategy throughout: **prove the physics in something anyone can read, then
 make it fast.**

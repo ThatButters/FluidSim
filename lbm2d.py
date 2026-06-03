@@ -76,6 +76,12 @@ class LBM2D:
         # body, if set, restricts force measurement to a subset of solid cells
         # (e.g. the cylinder only, excluding channel walls). None -> use solid.
         self.body = None
+        # rot_center, if set, enables torque measurement about that point.
+        self.rot_center = None
+        self._boundary_torque = 0.0
+        # cell-coordinate grids (for torque moment arms).
+        self._X, self._Y = np.meshgrid(np.arange(nx), np.arange(ny),
+                                       indexing="ij")
 
         # Steady inflow profile (2, nx, ny), enforced at the inlet each step.
         # A small antisymmetric sinusoidal vx(y) perturbation breaks up/down
@@ -177,6 +183,10 @@ class LBM2D:
         """
         body = self.solid if self.body is None else self.body
         force = np.zeros(2)
+        torque = 0.0
+        do_torque = self.rot_center is not None
+        if do_torque:
+            cx, cy = self.rot_center
         for i in range(9):
             if i == 4:                       # rest population carries no link
                 continue
@@ -189,15 +199,34 @@ class LBM2D:
             link = neigh_body & ~self.solid
             if not link.any():
                 continue
-            momentum = 2.0 * fout[i][link].sum()
-            force[0] += C[i, 0] * momentum
-            force[1] += C[i, 1] * momentum
+            # Momentum delivered per link (2 c_i f_i). This is the validated
+            # stationary-wall form (see the DFG benchmark). NOTE: extracting an
+            # accurate *net* load on a fast-moving, re-voxelising boundary is a
+            # known-hard problem -- the raw exchange is dominated by the momentum
+            # the wall convects, not the aerodynamic drag -- so for moving bodies
+            # we validate via the angular-momentum budget instead (see
+            # demo_rotor.py), and treat moving-boundary load extraction as a
+            # later calibration task.
+            momentum = 2.0 * fout[i][link]
+            dfx, dfy = C[i, 0] * momentum, C[i, 1] * momentum
+            force[0] += dfx.sum()
+            force[1] += dfy.sum()
+            if do_torque:                                # tau_z = r x F
+                rx = self._X[link] - cx
+                ry = self._Y[link] - cy
+                torque += float((rx * dfy - ry * dfx).sum())
+        self._boundary_torque = torque
         return force
 
     @property
     def force(self) -> np.ndarray:
         """Last computed [Fx, Fy] on the obstacle (lattice units)."""
         return self._boundary_force
+
+    @property
+    def torque(self) -> float:
+        """Last computed torque on the body about rot_center (lattice units)."""
+        return self._boundary_torque
 
     def coefficients(self) -> tuple[float, float]:
         """(Cd, Cl) from the last force, normalised by 0.5*rho*U^2*L (rho=1)."""

@@ -58,17 +58,35 @@ exact analytical velocity profile to **0.29% RMS error** across the annulus:
 
 ![Taylor-Couette validation](assets/taylor_couette.png)
 
+**A true spinning rotor** — geometry that physically sweeps the grid
+(re-voxelised every timestep). A two-blade rotor flings tip vortices into still
+fluid and spins it up, stably, over many revolutions:
+
+![Spinning rotor wake](assets/rotor_wake.png)
+
 ## Roadmap
+
+**Physics foundation (2D reference solver) — complete and validated:**
 
 - [x] 2D Lattice Boltzmann reference solver (CPU, NumPy)
 - [x] Surface force extraction (lift / drag / thrust) — validated
 - [x] Rotating / moving boundaries — validated vs analytical (0.29% RMS)
 - [x] Schäfer–Turek (DFG) exact benchmark — Cd/Cl/St all match published values
-- [ ] Sweeping rotating geometry with re-voxelisation (true spinning blade)
-- [ ] GPU port for real-time performance
+- [x] Sweeping rotating geometry with re-voxelisation (true spinning blade) —
+      stable over multiple revolutions, validated via the angular-momentum budget
+
+**The road to a usable tool:**
+
+- [ ] GPU port for real-time performance (native CUDA, RTX-class)
 - [ ] 3D + STL import + voxelisation
 - [ ] Real-time interactive flow visualisation
 - [ ] Per-domain analytics (planes / helis / drones)
+- [ ] **Validate against real RC datasets** at the operating Reynolds number
+      (UIUC propeller database, UIUC low-Re airfoil polars) — the accuracy bar
+      that matters before anyone trusts a number for a real build
+
+See **[docs/VALIDATION.md](docs/VALIDATION.md)** for the full accuracy results so
+far, and an honest account of what has *not* yet been validated.
 
 ## Running the reference solver
 
