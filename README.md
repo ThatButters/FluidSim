@@ -90,7 +90,11 @@ voxelisation → 3D flow. Mid-span section (left) and planform/tips (right):
 
 **The road to a usable tool:**
 
-- [ ] Native-CUDA optimisation (fused kernels, packed FP16/32) for real-time 3D
+- [x] **Native-CUDA fused kernel** — one-pass stream+collide+bounce-back+BC
+      (CuPy `RawKernel`, sm_120). ~3000 MLUPS on an RTX 5070 Ti, **50× over the
+      CuPy backend**, field-matched to the reference (0.24% RMS). Real-time 3D at
+      useful resolution (256³ ≈ 180 steps/s) is now reachable.
+- [ ] Further kernel tuning (FP16 + single-buffer esoteric-pull) for the last ~3×
 - [ ] 3D GPU rendering (volume smoke, vortex isosurfaces, surface pressure, camera)
 - [ ] Interactive 3D controls + per-domain analytics (planes / helis / drones)
 - [ ] **Validate against real RC datasets** at the operating Reynolds number
@@ -114,6 +118,7 @@ python gpu_benchmark.py              # GPU vs CPU: correctness + speed-up
 python live_viewer.py                # REAL-TIME interactive wind tunnel (GPU)
 python validate_sphere.py            # 3D solver: flow past a sphere (Re=100)
 python demo_stl_flow.py              # 3D: import an STL wing, flow past it
+python validate_cuda.py              # fused CUDA kernel: correctness + ~3000 MLUPS
 ```
 
 ### Live interactive viewer
