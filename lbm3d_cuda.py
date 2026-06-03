@@ -135,6 +135,10 @@ class LBM3D_CUDA:
         self.solid |= ((x - cx)**2 + (y - cy)**2 + (z - cz)**2
                        < r**2).astype(cp.uint8)
 
+    def set_solid(self, mask):
+        """Set the solid mask from a boolean array (e.g. a voxelised STL)."""
+        self.solid = cp.asarray(mask, dtype=cp.uint8)
+
     def step(self):
         self._kernel((self._blocks,), (self._threads,),
                      (self.f_a, self.f_b, self.solid,

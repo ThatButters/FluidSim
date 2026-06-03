@@ -95,7 +95,10 @@ voxelisation → 3D flow. Mid-span section (left) and planform/tips (right):
       CuPy backend**, field-matched to the reference (0.24% RMS). Real-time 3D at
       useful resolution (256³ ≈ 180 steps/s) is now reachable.
 - [ ] Further kernel tuning (FP16 + single-buffer esoteric-pull) for the last ~3×
-- [ ] 3D GPU rendering (volume smoke, vortex isosurfaces, surface pressure, camera)
+- [x] 3D vortex visualisation — Q-criterion vortex-core isosurfaces + body,
+      rendered in 3D (`render_3d.py`; a matplotlib stand-in)
+- [ ] Real-time interactive GPU renderer (volume smoke, smooth isosurfaces,
+      surface pressure, orbit camera; zero-copy from the solver)
 - [ ] Interactive 3D controls + per-domain analytics (planes / helis / drones)
 - [ ] **Validate against real RC datasets** at the operating Reynolds number
       (UIUC propeller database, UIUC low-Re airfoil polars) — the accuracy bar
