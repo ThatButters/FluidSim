@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Simulation output (generated; large frame sequences, logs, data dumps)
+out/
+*.npz
+
+# Research artifacts (not part of the project source)
+_paper.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
