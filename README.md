@@ -99,8 +99,12 @@ voxelisation → 3D flow. Mid-span section (left) and planform/tips (right):
 - [x] **Real-time interactive 3D viewer** (`live_viewer_3d.py`) — orbit/zoom
       around an imported wing while the GPU simulates; live vortex-core
       isosurfaces (the wingtip vortices), VTK-rendered
+- [x] Force/torque in the CUDA path (validated 0.25% vs reference) + live Cl/Cd/L-D
+      in the 3D viewer HUD; 3D finite-wing polar (lift slope matches theory)
+- [ ] Cumulant/regularised collision for stable RC Reynolds numbers (10⁴–10⁵)
+- [ ] Rotor/prop analytics (thrust, torque, figure of merit) in the CUDA path
 - [ ] Polish the renderer (volume smoke, surface pressure, live AoA/wind controls)
-- [ ] Per-domain analytics (planes / helis / drones) + force in the CUDA path
+- [ ] Per-domain dashboard (planes / helis / drones)
 - [ ] **Validate against real RC datasets** at the operating Reynolds number
       (UIUC propeller database, UIUC low-Re airfoil polars) — the accuracy bar
       that matters before anyone trusts a number for a real build
@@ -125,6 +129,7 @@ python demo_stl_flow.py              # 3D: import an STL wing, flow past it
 python validate_cuda.py              # fused CUDA kernel: correctness + ~3000 MLUPS
 python render_3d.py                  # 3D vortex-core isosurface render (still)
 python live_viewer_3d.py             # REAL-TIME interactive 3D wind tunnel
+python demo_wing_analytics.py        # 3D finite-wing polar (Cl/Cd/L-D)
 ```
 
 ### Live interactive viewer

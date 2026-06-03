@@ -28,6 +28,8 @@ real-world accuracy:
 | NACA 0012 polar (Re=1000) | thin-airfoil theory + airfoil behaviour | 1/2 — theory | $C_{l,0}=0$, drag bucket, stall ✓; slope 2.3/rad | qualitatively correct; slope low (low-Re + resolution) |
 | Sphere drag, 3D (Re=100) | Schiller–Naumann correlation | 2 — correlation | $C_d=1.21$ vs 1.09 | +11 % (D=24 staircasing; 3% blockage); steady wake correct |
 | STL voxelisation | analytic sphere mask | round-trip | IoU 0.93 | mesh→voxels correct (faceting/rounding gap) |
+| 3D CUDA force | CuPy reference (sphere) | cross-check | $C_d=1.205$ vs 1.208 | fused-kernel force matches reference to 0.25 % |
+| 3D finite-wing polar (Re=600) | finite-wing theory | 1 — theory | slope 1.42/rad vs ~1.58 | tip-vortex lift loss + induced drag correct (within ~10%) |
 
 **Reading the numbers.** Against experiment-validated references we are landing
 within **roughly 1–7 %**:
@@ -50,6 +52,13 @@ Real RC aircraft, helicopters, and drones operate at **Re ≈ 10⁴–10⁵**, i
 with **turbulence and laminar-to-turbulent transition** — a fundamentally harder
 regime that determines real drag, stall, and thrust. **We have no accuracy number
 there yet, and we will not claim one until we measure it.**
+
+**The BGK stability ceiling, measured.** On the 3D wing we found plain BGK stays
+stable to about **Re≈800** at this resolution (relaxation time $\tau\approx0.51$)
+and **diverges by Re≈1200** ($\tau\to0.5$). So the finite-wing polar runs at
+Re=600: the *physics* (finite-wing lift slope, induced drag) is correct, but the
+*magnitude* is at low Re. Reaching RC Reynolds numbers (10⁴–10⁵) at affordable
+resolution is precisely what a cumulant / regularised collision operator is for.
 
 This is the known hard frontier (see the research that informed the project):
 trustworthy accuracy at the RC operating regime requires

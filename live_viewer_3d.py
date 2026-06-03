@@ -61,6 +61,7 @@ class Viewer3D:
             write_binary_stl(stl, naca_wing(1.0, 1.6, 0.12))
         tris = rotate_aoa(load_binary_stl(stl), aoa)
         self.mask = voxelize(fit_to_grid(tris, nx, ny, nz, 0.22), nx, ny, nz)
+        self.area = float(self.mask.any(axis=1).sum())   # planform (for Cl/Cd)
 
         self._build()
         # Body surface (static) and a Q level taken from a developed warm-up
@@ -73,7 +74,9 @@ class Viewer3D:
         self.level = self._auto_level()
 
     def _build(self):
-        self.sim = LBM3D_CUDA(self.nx, self.ny, self.nz, u_lb=0.05, re=900.0,
+        # Re=600 keeps plain BGK stable at this resolution (higher Re needs a
+        # cumulant collision operator -- the documented next step).
+        self.sim = LBM3D_CUDA(self.nx, self.ny, self.nz, u_lb=0.05, re=600.0,
                               char_length=self.nx * 0.3)
         self.sim.set_solid(self.mask)
         self.steps = 0
@@ -98,13 +101,18 @@ class Viewer3D:
 
     # -- interactive run ----------------------------------------------------
     def _refresh(self):
-        """Re-extract the vortex isosurface and HUD (named actors, replaced)."""
+        """Re-extract the vortex isosurface + live coefficients (HUD)."""
         self.pl.add_mesh(self._vortex_mesh(), name="vortex", color="#23c0ff",
                          opacity=0.45, smooth_shading=True)
-        self.pl.add_text(f"AoA {self.aoa:.0f} deg   steps {self.steps}"
-                         + ("   [PAUSED]" if self.paused else ""),
-                         name="hud", position="upper_left",
-                         font_size=10, color="white")
+        F = self.sim.compute_force()
+        denom = 0.5 * self.sim.u_lb ** 2 * self.area
+        cd, cl = F[0] / denom, F[1] / denom
+        ld = cl / cd if abs(cd) > 1e-9 else 0.0
+        self.pl.add_text(
+            f"AoA {self.aoa:.0f} deg   steps {self.steps}\n"
+            f"Cl {cl:+.3f}   Cd {cd:.3f}   L/D {ld:+.1f}"
+            + ("   [PAUSED]" if self.paused else ""),
+            name="hud", position="upper_left", font_size=10, color="white")
 
     def run(self):
         self.pl = pv.Plotter(title="FluidSim -- live 3D wind tunnel")

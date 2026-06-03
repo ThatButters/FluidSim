@@ -159,3 +159,32 @@ class LBM3D_CUDA:
                 u[2] += C3[i, 2] * f[i]
         u /= rho
         return rho, u
+
+    def compute_force(self):
+        """Momentum-exchange force [Fx, Fy, Fz] on the solid (lattice units).
+
+        Run periodically, off the hot loop. In the pull scheme the buffer holds
+        the post-collision population at each cell, so the validated 2 c_i f_i
+        sum over fluid-solid links applies directly (matches the CuPy reference).
+        """
+        f = self.f_a
+        solid = self.solid.astype(bool)
+        force = cp.zeros(3, dtype=cp.float64)
+        for i in range(1, 19):
+            c = C3[i]
+            neigh = cp.roll(cp.roll(cp.roll(solid, -int(c[0]), 0),
+                                    -int(c[1]), 1), -int(c[2]), 2)
+            link = neigh & ~solid
+            if not bool(link.any()):
+                continue
+            m = 2.0 * f[i][link]
+            force[0] += float(c[0]) * m.sum()
+            force[1] += float(c[1]) * m.sum()
+            force[2] += float(c[2]) * m.sum()
+        return cp.asnumpy(force)
+
+    def coefficients(self, area):
+        """(Cx, Cy, Cz) = 2 F / (rho U^2 A), rho = 1. For flow in +x: Cx is the
+        drag coefficient, Cy the lift coefficient."""
+        F = self.compute_force()
+        return F / (0.5 * self.u_lb ** 2 * area)
